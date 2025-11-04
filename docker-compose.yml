@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  streamlit:
+    build: .
+    container_name: design-pathway-frontend
+    ports:
+      - "8501:8501"
+    networks:
+      - design-pathway-net
+    environment:
+      FASTAPI_HEATMAP: "http://design-pathway-backend:8000/api/heatmap"
+
+networks:
+  design-pathway-net:
+    external: true
