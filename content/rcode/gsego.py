@@ -6,19 +6,17 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from frontend.src.common.common import page_setup
+from src.common.common import page_setup
 params = page_setup()
 
 st.title("🧬 GSEA Analysis")
 
-# FastAPI endpoint
-FASTAPI_URL = os.getenv("FASTAPI_GSEGO", "http://fastapi:8000/api/gsego/run-gsea")
+# ✅ FastAPI endpoint (환경변수 우선)
+FASTAPI_GSEGO = os.getenv("FASTAPI_GSEGO", "http://design-pathway-backend:8000/api/gsego")
 
 # ----------------- Main Tabs -----------------
 main_tabs = st.tabs(["🧬 GSEA"])
-gsea_tab = main_tabs[0]
-
-with gsea_tab:
+with main_tabs[0]:
     sub_tabs = st.tabs(["⚙️ Configure", "🚀 Run", "📊 Result", "⬇️ Download"])
     configure_tab, run_tab, result_tab, download_tab = sub_tabs
 
@@ -52,29 +50,29 @@ with gsea_tab:
                 "orgdb": orgdb,
                 "min_gs_size": min_gs_size,
                 "max_gs_size": max_gs_size,
-                "pvalue_cutoff": pvalue_cutoff
+                "pvalue_cutoff": pvalue_cutoff,
             }
 
     # ----------------- Run -----------------
     with run_tab:
-        if st.button("Run GSEA Analysis"):
-            params = st.session_state.get("gsea_params", None)
+        if st.button("Run GSEA Analysis via FastAPI"):
+            params = st.session_state.get("gsea_params")
             if not params:
                 st.warning("Please configure parameters first.")
             else:
                 with st.spinner("Running GSEA analysis on FastAPI server..."):
                     try:
-                        response = requests.post(FASTAPI_URL, json=params)
+                        response = requests.post(FASTAPI_GSEGO, json=params, timeout=600)
                         if response.status_code == 200:
                             result = response.json()
-                            st.success(result.get("message", "GSEA completed successfully!"))
+                            st.success(result.get("message", "✅ GSEA completed successfully!"))
                             if result.get("stdout"):
                                 st.text_area("R Output Log", result["stdout"], height=300)
                         else:
-                            st.error(f"FastAPI request failed: {response.status_code}")
+                            st.error(f"❌ FastAPI request failed: {response.status_code}")
                             st.text_area("Error Details", response.text, height=300)
                     except requests.exceptions.RequestException as e:
-                        st.error(f"Request failed: {e}")
+                        st.error(f"🚨 Request failed: {e}")
 
     # ----------------- Result -----------------
     with result_tab:
@@ -106,7 +104,7 @@ with gsea_tab:
                         label="⬇️ Download GSEA Results (ZIP)",
                         data=f,
                         file_name="GSEA_results.zip",
-                        mime="application/zip"
+                        mime="application/zip",
                     )
         else:
             st.info("No GSEA results available for download.")

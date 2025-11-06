@@ -8,9 +8,22 @@ services:
       - "8501:8501"
     networks:
       - design-pathway-net
+    volumes:
+      - ./:/app
     environment:
       FASTAPI_HEATMAP: "http://design-pathway-backend:8000/api/heatmap"
+      FASTAPI_VOLCANO: "http://design-pathway-backend:8000/api/volcano"
+      FASTAPI_ENHANCED: "http://design-pathway-backend:8000/api/volcano/enhanced"
+      FASTAPI_PCA: "http://design-pathway-backend:8000/api/pca"
+      FASTAPI_DEG: "http://design-pathway-backend:8000/api/heatmap"
+      FASTAPI_ENRICHPLOT: "http://design-pathway-backend:8000/api/heatmap"
+      FASTAPI_CNETPLOT: "http://design-pathway-backend:8000/api/cnetplot"
+      FASTAPI_EMAPPLOT: "http://design-pathway-backend:8000/api/emapplot"
+      FASTAPI_GSEGO: "http://design-pathway-backend:8000/api/gsego"
+      FASTAPI_GSEAPLOT: "http://design-pathway-backend:8000/api/gseaplot"
+      FASTAPI_RIDGEPLOT: "http://design-pathway-backend:8000/api/ridgeplot"
+      FASTAPI_PATHWAY_GENE: "http://design-pathway-backend:8000/api/pathway_gene"
 
 networks:
   design-pathway-net:
-    external: true
+    external: true 

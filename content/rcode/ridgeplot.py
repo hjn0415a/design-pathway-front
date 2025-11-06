@@ -5,14 +5,14 @@ import requests
 import tempfile
 import shutil
 from pathlib import Path
-from frontend.src.common.common import page_setup
+from src.common.common import page_setup
 
 # ----------------- PAGE SETUP -----------------
 params = page_setup()
 st.title("GSEA Ridgeplot")
 
 # ----------------- FastAPI URL -----------------
-FASTAPI_URL = "http://localhost:8000/run_ridgeplot"  # FastAPI 서버 엔드포인트
+FASTAPI_RIDGEPLOT = os.getenv("FASTAPI_RIDGEPLOT", "http://design-pathway-backend:8000/api/ridgeplot")
 
 # ----------------- Workspace 체크 -----------------
 if "workspace" not in st.session_state:
@@ -58,7 +58,7 @@ with ridge_tab:
             params = st.session_state.get("ridgeplot_params", {})
             with st.spinner("Running R script via FastAPI..."):
                 try:
-                    response = requests.post(FASTAPI_URL, json=params, timeout=600)
+                    response = requests.post(FASTAPI_RIDGEPLOT, json=params, timeout=600)
                     if response.status_code == 200:
                         result = response.json()
                         st.success(result.get("message", "Ridgeplot GSEA completed!"))

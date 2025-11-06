@@ -1,26 +1,36 @@
 import os
-import streamlit as st
 import requests
+import streamlit as st
+from pathlib import Path
 import pandas as pd
 import tempfile
 import shutil
-from pathlib import Path
 
-from frontend.src.common.common import page_setup
+from src.common.common import page_setup
+
+# 기본 설정
 params = page_setup()
-
 st.title("🧬 DEG Analysis")
 
-FASTAPI_URL = os.getenv("FASTAPI_DEG", "http://localhost:8000/run_deg")
+# FastAPI 엔드포인트 (환경변수 or 기본값)
+FASTAPI_DEG = os.getenv("FASTAPI_DEG", "http://design-pathway-backend:8000/api/deg")
 
-# ----------------- 업로드 CSV 확인 -----------------
-if hasattr(st.session_state, "uploaded_csv_files") and st.session_state.uploaded_csv_files:
-    csv_files = st.session_state.uploaded_csv_files
-else:
-    st.warning("⚠️ Please upload a CSV file first in the Upload tab.")
+# ----------------- 업로드된 CSV 확인 -----------------
+if "workspace" not in st.session_state:
+    st.warning("⚠️ Workspace not initialized. Please go to Upload tab first.")
     csv_files = []
+else:
+    csv_dir = Path(st.session_state.workspace, "csv-files")
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    csv_paths = sorted([p for p in csv_dir.glob("*.csv")])
 
-# ----------------- Main Tabs -----------------
+    if not csv_paths:
+        st.warning("⚠️ No CSV files found. Please upload a CSV file first.")
+        csv_files = []
+    else:
+        csv_files = [str(p) for p in csv_paths]
+
+# ----------------- 메인 탭 -----------------
 main_tabs = st.tabs(["🧬 DEG Filtering"])
 deg_tab = main_tabs[0]
 
@@ -31,41 +41,47 @@ with deg_tab:
     # ----------------- Configure -----------------
     with configure_tab:
         if csv_files:
-            selected_csv = st.selectbox("Select CSV file", [Path(f).name for f in csv_files])
-            csv_path = Path(st.session_state.workspace, "csv-files", selected_csv)
+            selected_csv = st.selectbox(
+                "Select a CSV file to analyze:",
+                [Path(f).name for f in csv_files]
+            )
+            csv_path = str(Path(st.session_state.workspace, "csv-files", selected_csv))
             result_dir = Path(st.session_state.workspace, "Deg")
             result_dir.mkdir(parents=True, exist_ok=True)
         else:
-            csv_path = None
+            csv_path = ""
             result_dir = None
 
-        fc_input = st.text_input("FC thresholds (comma-separated)", "1.5,2")
+        fc_input = st.text_input("Fold Change thresholds (comma-separated)", "1.5,2")
         pval_input = st.text_input("P-value thresholds (comma-separated)", "0.05,0.01")
 
         st.session_state["deg_params"] = {
-            "csv_path": str(csv_path) if csv_path else "",
+            "csv_path": csv_path,
             "fc_input": fc_input,
             "pval_input": pval_input
         }
 
     # ----------------- Run -----------------
     with run_tab:
-        if csv_files and st.button("🚀 Run DEG Filtering"):
-            params = st.session_state.get("deg_params", {})
-            with st.spinner("Running DEG filtering via FastAPI..."):
-                try:
-                    response = requests.post(FASTAPI_URL, json=params)
-                    if response.status_code == 200:
-                        result = response.json()
-                        st.success(result.get("message", "✅ DEG filtering completed!"))
-                        if result.get("stdout"):
-                            st.text(result["stdout"])
-                    else:
-                        st.error(f"❌ Failed: {response.status_code}")
-                        st.text(response.text)
-                except Exception as e:
-                    st.error(f"Request failed: {e}")
-        elif not csv_files:
+        if csv_files:
+            selected_csv = Path(csv_path).name
+            st.info(f"📂 CSV Path: {csv_path}")
+
+            if st.button("🚀 Run DEG Filtering"):
+                params = st.session_state.get("deg_params", {})
+                with st.spinner("Running DEG filtering via FastAPI..."):
+                    try:
+                        response = requests.post(FASTAPI_DEG, json=params)
+                        if response.status_code == 200:
+                            result = response.json()
+                            st.success(result.get("message", "✅ DEG filtering completed!"))
+                            if result.get("stdout"):
+                                st.text(result["stdout"])
+                        else:
+                            st.error(f"❌ Server error: {response.text}")
+                    except requests.exceptions.RequestException as e:
+                        st.error(f"Connection failed: {e}")
+        else:
             st.info("Please upload a CSV file first before running.")
 
     # ----------------- Result -----------------

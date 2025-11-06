@@ -1,14 +1,16 @@
 import os
+import sys
 import requests
 import streamlit as st
 import pandas as pd
+from src.common.common import page_setup
 
-from frontend.src.common.common import page_setup
 params = page_setup()
 
 st.title("Cnetplot")
 
-FASTAPI_CNETPLOT_URL = os.getenv("FASTAPI_CNETPLOT", "http://fastapi:8000/run-cnetplot/")
+# ✅ 환경변수 설정 (없으면 기본값 사용)
+FASTAPI_CNETPLOT_URL = os.getenv("FASTAPI_CNETPLOT", "http://design-pathway-backend:8000/api/cnetplot")
 
 # ----------------- Main Tabs -----------------
 main_tabs = st.tabs(["🧬 Cnetplot"])

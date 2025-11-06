@@ -22,14 +22,14 @@ RUN pip install --no-cache-dir -r requirements_streamlit.txt
 
 # Copy application code
 WORKDIR /app
-COPY assets/ /app/assets/
-COPY content/ /app/content/
-COPY gdpr_consent/ /app/gdpr_consent
-COPY src/ /app/src/
-COPY app.py /app/app.py
-COPY settings.json /app/settings.json
-COPY default-parameters.json /app/default-parameters.json
-COPY .streamlit/config.toml /app/.streamlit/config.toml
+# COPY assets/ /app/assets/
+# COPY content/ /app/content/
+# COPY gdpr_consent/ /app/gdpr_consent
+# COPY src/ /app/src/
+# COPY app.py /app/app.py
+# COPY settings.json /app/settings.json
+# COPY default-parameters.json /app/default-parameters.json
+# COPY .streamlit/config.toml /app/.streamlit/config.toml
 
 # Expose Streamlit port
 EXPOSE 8501
