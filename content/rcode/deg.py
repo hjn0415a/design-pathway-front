@@ -13,7 +13,7 @@ params = page_setup()
 st.title("🧬 DEG Analysis")
 
 # FastAPI 엔드포인트 (환경변수 or 기본값)
-FASTAPI_DEG = os.getenv("FASTAPI_DEG", "http://design-pathway-backend:8000/api/deg")
+FASTAPI_DEG = os.getenv("FASTAPI_DEG", "http://design-pathway-backend:8000/api/deg/")
 
 # ----------------- 업로드된 CSV 확인 -----------------
 if "workspace" not in st.session_state:
@@ -69,9 +69,12 @@ with deg_tab:
 
             if st.button("🚀 Run DEG Filtering"):
                 params = st.session_state.get("deg_params", {})
+                st.info(params)
                 with st.spinner("Running DEG filtering via FastAPI..."):
                     try:
-                        response = requests.post(FASTAPI_DEG, json=params)
+                        # ✅ FastAPI의 Form(...) 구조에 맞게 data로 전송
+                        response = requests.post(FASTAPI_DEG, data=params)
+
                         if response.status_code == 200:
                             result = response.json()
                             st.success(result.get("message", "✅ DEG filtering completed!"))

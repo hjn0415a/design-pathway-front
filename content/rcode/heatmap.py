@@ -9,7 +9,7 @@ from src.common.common import page_setup
 params = page_setup()
 st.title("Heatmap")
 
-FASTAPI_HEATMAP = os.getenv("FASTAPI_HEATMAP", "http://design-pathway-backend:8000/api/heatmap")
+FASTAPI_HEATMAP = os.getenv("FASTAPI_HEATMAP", "http://design-pathway-backend:8000/api/heatmap/")
 
 # ----------------- 업로드된 CSV 확인 (수정본) -----------------
 # workspace가 초기화되어 있는지 안전하게 확인

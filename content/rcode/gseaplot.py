@@ -6,7 +6,7 @@ import tempfile
 import shutil
 
 from pathlib import Path
-from frontend.src.common.common import page_setup
+from src.common.common import page_setup
 
 # ----------------- PAGE SETUP -----------------
 params = page_setup()

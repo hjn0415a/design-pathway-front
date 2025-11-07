@@ -8,7 +8,7 @@ from src.common.common import page_setup
 params = page_setup()
 st.title("Volcano / Enhanced Volcano Plot Dashboard")
 
-FASTAPI_VOLCANO = os.getenv("FASTAPI_VOLCANO", "http://fastapi:8000/api/volcano")
+FASTAPI_VOLCANO = os.getenv("FASTAPI_VOLCANO", "http://fastapi:8000/api/volcano/")
 
 # ----------------- 업로드된 CSV 확인 -----------------
 if "workspace" not in st.session_state:
