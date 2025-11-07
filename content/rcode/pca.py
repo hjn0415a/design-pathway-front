@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import requests
-from frontend.src.common.common import page_setup
+from src.common.common import page_setup
 from pathlib import Path
 
 params = page_setup()

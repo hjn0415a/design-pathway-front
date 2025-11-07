@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from frontend.src.common.common import page_setup
+from src.common.common import page_setup
 
 # 페이지 설정
 params = page_setup()
