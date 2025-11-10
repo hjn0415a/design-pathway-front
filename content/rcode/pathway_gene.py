@@ -5,7 +5,7 @@ import streamlit as st
 import requests
 from pathlib import Path
 
-from frontend.src.common.common import page_setup
+from src.common.common import page_setup
 params = page_setup()
 
 st.title("Heatmaplike Functional Classification")
@@ -62,7 +62,7 @@ with main_tabs[0]:
             else:
                 try:
                     response = requests.post(
-                        "http://localhost:8000/run-pathway-gene/",
+                        "http://localhost:8000/api/pathway_gene/",
                         json=params
                     )
                     if response.status_code == 200:
