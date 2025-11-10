@@ -33,11 +33,6 @@ if __name__ == '__main__':
             st.Page(Path("content", "rcode", "ridgeplot.py"), title="Ridgeplot", icon="🕸️"),
             st.Page(Path("content", "rcode", "pathway_gene.py"), title="Heatmaplike functional classification", icon="📋"),
         ],
-        # "Enrichkegg": [
-        #     st.Page(Path("content", "rcode", "enrichkegg.py"), title="Enrichkegg", icon="📋"),
-        #     st.Page(Path("content", "rcode", "enrichkegg_dotplot.py"), title="Enrichkegg dotplot", icon="📉"),
-        #     st.Page(Path("content", "rcode", "pathview.py"), title="Pathview", icon="🔎"),
-        # ],
     }
 
     pg = st.navigation(pages)
