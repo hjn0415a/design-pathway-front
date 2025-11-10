@@ -78,6 +78,8 @@ with deg_tab:
 
 
                             download_path = Path(result_dir, "deg.zip")
+                            if result_dir.exists():
+                                shutil.rmtree(result_dir)
                             download_path.parent.mkdir(parents=True, exist_ok=True)
 
                             # ✅ ZIP 파일 저장
