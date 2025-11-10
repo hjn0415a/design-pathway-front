@@ -47,7 +47,6 @@ with deg_tab:
             )
             csv_path = str(Path(st.session_state.workspace, "csv-files", selected_csv))
             result_dir = Path(st.session_state.workspace, "Deg")
-            result_dir.mkdir(parents=True, exist_ok=True)
         else:
             csv_path = ""
             result_dir = None
@@ -73,13 +72,22 @@ with deg_tab:
                 with st.spinner("Running DEG filtering via FastAPI..."):
                     try:
                         # ✅ FastAPI의 Form(...) 구조에 맞게 data로 전송
-                        response = requests.post(FASTAPI_DEG, data=params)
-
+                        response = requests.post(FASTAPI_DEG, data=params, stream=False)
+                        
                         if response.status_code == 200:
-                            result = response.json()
-                            st.success(result.get("message", "✅ DEG filtering completed!"))
-                            if result.get("stdout"):
-                                st.text(result["stdout"])
+
+
+                            download_path = Path(result_dir, "deg.zip")
+                            download_path.parent.mkdir(parents=True, exist_ok=True)
+
+                            # ✅ ZIP 파일 저장
+                            download_path.write_bytes(response.content)
+
+                            shutil.unpack_archive(str(download_path), extract_dir=str(result_dir))
+
+                            st.success("📦 Unzipped results into workspace successfully!")
+
+
                         else:
                             st.error(f"❌ Server error: {response.text}")
                     except requests.exceptions.RequestException as e:
