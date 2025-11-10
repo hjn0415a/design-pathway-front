@@ -1,23 +1,33 @@
 import os
 import streamlit as st
 import requests
-from src.common.common import page_setup
 from pathlib import Path
+from src.common.common import page_setup
 
+# 기본 설정
 params = page_setup()
-
 st.title("📉 PCA (Principal Component Analysis)")
 
-FASTAPI_URL = "http://localhost:8000/api/pca/run-pca"  # FastAPI endpoint
+FASTAPI_PCA = os.getenv("FASTAPI_PCA", "http://design-pathway-backend:8000/api/pca/")
 
-main_tab = st.tabs(["📉 PCA Plot"])[0]
-
-# ----------------- 업로드 CSV 확인 -----------------
-if hasattr(st.session_state, "uploaded_csv_files") and st.session_state.uploaded_csv_files:
-    csv_files = st.session_state.uploaded_csv_files
-else:
-    st.warning("⚠️ Please upload a CSV file first in the Upload tab.")
+# ----------------- 업로드된 CSV 확인 (Heatmap 스타일) -----------------
+if "workspace" not in st.session_state:
+    st.warning("⚠️ Workspace not initialized. Please go to page setup or Upload tab first.")
     csv_files = []
+else:
+    csv_dir = Path(st.session_state.workspace, "csv-files")
+    csv_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_paths = sorted([p for p in csv_dir.glob("*.csv")])
+
+    if not csv_paths:
+        st.warning("⚠️ No CSV files found in the workspace csv-files folder. Please upload a CSV file first in the Upload tab.")
+        csv_files = []
+    else:
+        csv_files = [str(p) for p in csv_paths]
+
+# ----------------- 메인 탭 -----------------
+main_tab = st.tabs(["📉 PCA Plot"])[0]
 
 with main_tab:
     sub_tabs = st.tabs(["⚙️ Configure", "🚀 Run", "📊 Result", "⬇️ Download"])
@@ -25,14 +35,6 @@ with main_tab:
 
     # ----------------- Configure -----------------
     with configure_tab:
-        if csv_files:
-            selected_csv = st.selectbox("Select CSV file for PCA", [Path(f).name for f in csv_files])
-            csv_path_pca = Path(st.session_state.workspace, "csv-files", selected_csv)
-            output_svg_pca = Path(st.session_state.workspace, selected_csv.replace(".csv", "_PCA.svg"))
-        else:
-            csv_path_pca = None
-            output_svg_pca = None
-
         width_pca = st.number_input("Plot Width", value=8.0, step=0.5)
         height_pca = st.number_input("Plot Height", value=6.0, step=0.5)
         pointshape_pca = st.number_input("Point Shape", value=16, step=1)
@@ -41,39 +43,60 @@ with main_tab:
 
     # ----------------- Run -----------------
     with run_tab:
-        if csv_files and st.button("Run PCA via FastAPI"):
-            payload = {
-                "csv_path": str(csv_path_pca),
-                "output_svg": str(output_svg_pca),
-                "width": width_pca,
-                "height": height_pca,
-                "pointshape": pointshape_pca,
-                "pointsize": pointsize_pca,
-                "text_size": text_size_pca
-            }
-            try:
-                response = requests.post(FASTAPI_URL, json=payload)
-                if response.status_code == 200:
-                    with open(output_svg_pca, "wb") as f:
-                        f.write(response.content)
-                    st.success("✅ PCA plot generated successfully via FastAPI!")
-                else:
-                    st.error(f"❌ PCA generation failed: {response.text}")
-            except requests.exceptions.RequestException as e:
-                st.error(f"Request to FastAPI failed: {e}")
+        if csv_files:
+            selected_csv = st.selectbox(
+                "Select CSV file for PCA:",
+                [Path(f).name for f in csv_files]
+            )
+            csv_path = str(Path(st.session_state.workspace, "csv-files", selected_csv))
+            output_svg = Path(st.session_state.workspace, selected_csv.replace(".csv", "_PCA.svg"))
+
+            st.info(f"📂 CSV Path: {csv_path}")
+
+            if st.button("Run PCA via FastAPI"):
+                payload = {
+                    "csv_path": csv_path,
+                    "width": width_pca,
+                    "height": height_pca,
+                    "pointshape": pointshape_pca,
+                    "pointsize": pointsize_pca,
+                    "text_size": text_size_pca
+                }
+                try:
+                    response = requests.post(FASTAPI_PCA, json=payload)
+                    if response.status_code == 200:
+                        with open(output_svg, "wb") as f:
+                            f.write(response.content)
+                        st.success("✅ PCA plot generated successfully via FastAPI!")
+                    else:
+                        st.error(f"❌ PCA generation failed: {response.text}")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Request to FastAPI failed: {e}")
+        else:
+            st.warning("⚠️ Please upload a CSV file first in the Upload tab.")
 
     # ----------------- Result -----------------
     with result_tab:
-        if output_svg_pca and output_svg_pca.exists():
-            st.image(str(output_svg_pca), caption="PCA Plot", width=700)
+        if csv_files:
+            output_svg_pca = Path(
+                st.session_state.workspace,
+                Path(csv_files[0]).name.replace(".csv", "_PCA.svg")
+            )
+            if output_svg_pca.exists():
+                st.image(str(output_svg_pca), caption="PCA Plot", width=700)
 
     # ----------------- Download -----------------
     with download_tab:
-        if output_svg_pca and output_svg_pca.exists():
-            with open(output_svg_pca, "rb") as f:
-                st.download_button(
-                    label="Download PCA SVG",
-                    data=f,
-                    file_name=output_svg_pca.name,
-                    mime="image/svg+xml"
-                )
+        if csv_files:
+            output_svg_pca = Path(
+                st.session_state.workspace,
+                Path(csv_files[0]).name.replace(".csv", "_PCA.svg")
+            )
+            if output_svg_pca.exists():
+                with open(output_svg_pca, "rb") as f:
+                    st.download_button(
+                        label="Download PCA SVG",
+                        data=f,
+                        file_name=output_svg_pca.name,
+                        mime="image/svg+xml"
+                    )
