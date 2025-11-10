@@ -14,8 +14,8 @@ params = page_setup()
 st.title("GSEA Plot (via FastAPI)")
 
 # ----------------- FastAPI URLs -----------------
-FASTAPI_TOTAL_URL = os.getenv("FASTAPI_GSEAPLOT_TOTAL", "http://localhost:8000/run_gseaplot_total")
-FASTAPI_TERM_URL = os.getenv("FASTAPI_GSEAPLOT_TERM", "http://localhost:8000/run_gseaplot_term")
+FASTAPI_TOTAL_URL = os.getenv("FASTAPI_GSEAPLOT_TOTAL", "http://localhost:8000/api/gseaplot/total")
+FASTAPI_TERM_URL = os.getenv("FASTAPI_GSEAPLOT_TERM", "http://localhost:8000/api/gseaplot/term")
 
 # ----------------- Workspace 체크 -----------------
 if "workspace" not in st.session_state:
