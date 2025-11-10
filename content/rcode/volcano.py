@@ -9,6 +9,7 @@ params = page_setup()
 st.title("Volcano / Enhanced Volcano Plot Dashboard")
 
 FASTAPI_VOLCANO = os.getenv("FASTAPI_VOLCANO", "http://fastapi:8000/api/volcano/")
+FASTAPI_ENHANCED = os.getenv("FASTAPI_VOLCANO", "http://fastapi:8000/api/volcano/enhanced")
 
 # ----------------- 업로드된 CSV 확인 -----------------
 if "workspace" not in st.session_state:
@@ -53,11 +54,10 @@ with volcano_tab:
                         "csv_path": csv_path,
                         "fc_cutoff": fc_cutoff,
                         "pval_cutoff": pval_cutoff,
-                        "plot_type": "volcano"
                     }
 
                     try:
-                        response = requests.post(FASTAPI_VOLCANO, data=payload)
+                        response = requests.post(FASTAPI_VOLCANO, json=payload)
                         if response.status_code == 200:
                             with open(output_svg_volcano, "wb") as f:
                                 f.write(response.content)
@@ -114,11 +114,10 @@ with enhanced_tab:
                         "csv_path": csv_path,
                         "fc_cutoff": fc_cutoff,
                         "pval_cutoff": pval_cutoff,
-                        "plot_type": "enhanced"
                     }
 
                     try:
-                        response = requests.post(FASTAPI_VOLCANO, data=payload)
+                        response = requests.post(FASTAPI_ENHANCED, json=payload)
                         if response.status_code == 200:
                             with open(output_svg_enhanced, "wb") as f:
                                 f.write(response.content)
