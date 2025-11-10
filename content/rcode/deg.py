@@ -72,7 +72,7 @@ with deg_tab:
                 with st.spinner("Running DEG filtering via FastAPI..."):
                     try:
                         # ✅ FastAPI의 Form(...) 구조에 맞게 data로 전송
-                        response = requests.post(FASTAPI_DEG, data=params, stream=True)
+                        response = requests.post(FASTAPI_DEG, data=params, stream=False)
                         
                         if response.status_code == 200:
 
@@ -81,14 +81,7 @@ with deg_tab:
                             download_path.parent.mkdir(parents=True, exist_ok=True)
 
                             # ✅ ZIP 파일 저장
-                            with open(download_path, "wb") as f:
-                                for chunk in response.iter_content(chunk_size=8192):
-                                    if chunk:
-                                        f.write(chunk)
-
-                            for item in result_dir.iterdir():
-                                if item.is_dir():
-                                    shutil.rmtree(item)
+                            download_path.write_bytes(response.content)
 
                             shutil.unpack_archive(str(download_path), extract_dir=str(result_dir))
 
