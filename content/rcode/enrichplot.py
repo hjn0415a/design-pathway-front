@@ -48,6 +48,10 @@ with enrich_tab:
         plot_width = st.number_input("Plot width", value=8.0, step=0.5)
         plot_height = st.number_input("Plot height", value=6.0, step=0.5)
 
+        # ✅ 디렉터리 경로 출력
+        st.write("**DEG directory:**", str(deg_dir))
+        st.write("**Output directory:**", str(output_dir))
+
         st.session_state["enrich_params"] = {
             "result_root": str(deg_dir),
             "output_root": str(output_dir),
@@ -66,12 +70,29 @@ with enrich_tab:
 
                 with st.spinner("Running GO Enrichment via FastAPI..."):
                     try:
-                        response = requests.post(FASTAPI_ENRICH, json=payload)
+                        response = requests.post(FASTAPI_ENRICH, json=payload, stream=False)
+
                         if response.status_code == 200:
-                            res = response.json()
-                            st.success("✅ GO Enrichment analysis completed successfully!")
-                            if "stdout" in res:
-                                st.text_area("R Output Log", res["stdout"], height=300)
+                            # 결과 ZIP 저장 경로
+                            download_path = output_dir / "enrich.zip"
+
+                            # 기존 output_dir 삭제 후 재생성
+                            if output_dir.exists():
+                                shutil.rmtree(output_dir)
+                            output_dir.mkdir(parents=True, exist_ok=True)
+
+                            # ZIP 파일 저장
+                            download_path.write_bytes(response.content)
+
+                            # ZIP 압축 해제
+                            shutil.unpack_archive(str(download_path), extract_dir=str(output_dir))
+
+                            # ZIP 파일 삭제
+                            if download_path.exists():
+                                download_path.unlink()
+
+                            st.success("📦 GO Enrichment results downloaded and unzipped successfully!")
+
                         else:
                             st.error(f"❌ Server error: {response.text}")
                     except requests.exceptions.RequestException as e:
