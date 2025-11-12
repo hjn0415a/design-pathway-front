@@ -73,9 +73,8 @@ with deg_tab:
                     try:
                         # ✅ FastAPI의 Form(...) 구조에 맞게 data로 전송
                         response = requests.post(FASTAPI_DEG, data=params, stream=False)
-                        
+        
                         if response.status_code == 200:
-
 
                             download_path = Path(result_dir, "deg.zip")
                             if result_dir.exists():
@@ -84,11 +83,13 @@ with deg_tab:
 
                             # ✅ ZIP 파일 저장
                             download_path.write_bytes(response.content)
-
                             shutil.unpack_archive(str(download_path), extract_dir=str(result_dir))
 
-                            st.success("📦 Unzipped results into workspace successfully!")
+                            # ✅ deg.zip 파일 삭제
+                            if download_path.exists():
+                                download_path.unlink()
 
+                            st.success("📦 Unzipped results into workspace successfully!")
 
                         else:
                             st.error(f"❌ Server error: {response.text}")
