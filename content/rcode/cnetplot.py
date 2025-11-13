@@ -55,12 +55,12 @@ with cnet_tab:
             "P-value threshold", value=0.05, step=0.01, format="%.2f"
         )
         combo_root = deg_dir  # combo_names.csv가 있는 DEG 폴더
-
+        enrich_dir = Path(st.session_state.workspace, "Enrichment", "out")
         st.write("**DEG directory:**", str(deg_dir))
         st.write("**Output directory:**", str(output_dir))
 
         st.session_state["cnet_params"] = {
-            "result_root": str(deg_dir),
+            "enrich_root": str(enrich_dir),
             "output_root": str(output_dir),
             "combo_root": str(combo_root),
             "fc_threshold": fc_threshold,
@@ -111,15 +111,14 @@ with cnet_tab:
 
     # ----------------- Result -----------------
     with result_tab:
-        if combo_csv.exists():
-            combos = pd.read_csv(combo_csv)["combo"].tolist()
-            for combo in combos:
-                st.markdown(f"### {combo}")
-                plot_file = output_dir / combo / "figure" / "cnetplot.svg"
-                if plot_file.exists():
-                    st.image(str(plot_file), width=750)
-                else:
-                    st.warning(f"No Cnet plot found for {combo}")
+        combo_name = f"FC{fc_threshold}_p{pval_threshold}"
+        for ont in ["BP", "CC", "MF"]:
+            st.markdown(f"### {combo_name} - {ont}")
+            plot_file = output_dir / combo_name /f"cnet_{ont}.svg"
+            if plot_file.exists():
+                st.image(str(plot_file), width=750)
+            else:
+                st.warning(f"No Cnet plot found for {combo_name}")
 
     # ----------------- Download -----------------
     with download_tab:
