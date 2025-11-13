@@ -1,110 +1,152 @@
 import os
 import streamlit as st
-import requests
 import pandas as pd
-import tempfile
+import requests
 import shutil
+import tempfile
 from pathlib import Path
 
 from src.common.common import page_setup
+
+# ----------------- 기본 설정 -----------------
 params = page_setup()
+st.title("🧬 GSEA GO Analysis")
 
-st.title("🧬 GSEA Analysis")
-
-# ✅ FastAPI endpoint (환경변수 우선)
 FASTAPI_GSEGO = os.getenv("FASTAPI_GSEGO", "http://design-pathway-backend:8000/api/gsego")
 
-# ----------------- Main Tabs -----------------
-main_tabs = st.tabs(["🧬 GSEA"])
-with main_tabs[0]:
+# ----------------- 업로드된 DEG 결과 확인 -----------------
+if "workspace" not in st.session_state:
+    st.warning("⚠️ Workspace not initialized. Please go to Upload or DEG tab first.")
+    csv_files = []
+else:
+    deg_dir = Path(st.session_state.workspace, "Deg")
+    deg_dir.mkdir(parents=True, exist_ok=True)
+
+    combo_csv = deg_dir / "combo_names.csv"
+    if not combo_csv.exists():
+        st.warning("⚠️ No DEG results found. Please run DEG filtering first.")
+        csv_files = []
+    else:
+        combos = pd.read_csv(combo_csv)["combo"].tolist()
+
+# ----------------- 메인 탭 -----------------
+main_tabs = st.tabs(["🧬 GSEA GO Analysis"])
+gsea_tab = main_tabs[0]
+
+with gsea_tab:
     sub_tabs = st.tabs(["⚙️ Configure", "🚀 Run", "📊 Result", "⬇️ Download"])
     configure_tab, run_tab, result_tab, download_tab = sub_tabs
 
     # ----------------- Configure -----------------
     with configure_tab:
-        workspace = st.session_state.workspace
-        csv_dir = Path(workspace, "csv-files")
-        gsea_out_dir = Path(workspace, "gsea-results")
-        gsea_out_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = Path(st.session_state.workspace, "GSEA_GO", "out")
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        st.markdown(f"📁 **Current workspace:** `{workspace}`")
+        org_db = st.selectbox("OrgDb", ["org.Hs.eg.db", "org.Mm.eg.db"], index=0)
+        min_gs_size = st.number_input("Minimum gene set size", value=10, step=1)
+        max_gs_size = st.number_input("Maximum gene set size", value=500, step=10)
+        pvalue_cutoff = st.number_input("P-value cutoff", value=0.05, step=0.01, format="%.2f")
+        plot_width = st.number_input("Plot width", value=8.0, step=0.5)
+        plot_height = st.number_input("Plot height", value=6.0, step=0.5)
 
-        # CSV 파일 선택
-        csv_files = list(csv_dir.glob("*.csv"))
-        if not csv_files:
-            st.warning("No CSV files found. Please upload a CSV file first.")
+        st.write("**DEG directory:**", str(deg_dir))
+        st.write("**Output directory:**", str(output_dir))
+
+        # csv-files 폴더에서 업로드된 CSV 파일 목록 가져오기
+        csv_dir = Path(st.session_state.workspace, "csv-files")
+        csv_dir.mkdir(parents=True, exist_ok=True)
+        csv_paths = sorted([p for p in csv_dir.glob("*.csv")])
+
+        if not csv_paths:
+            st.warning("⚠️ No CSV files found in csv-files folder. Please upload a CSV file first.")
+            csv_path = None
         else:
-            selected_csv = st.selectbox("Select input CSV file", [f.name for f in csv_files])
-            file_path = csv_dir / selected_csv
+            selected_csv = st.selectbox(
+                "Select CSV file for GSEA GO Analysis",
+                [p.name for p in csv_paths]
+            )
+            csv_path = str(csv_dir / selected_csv)
+            st.info(f"📂 Selected CSV Path: {csv_path}")
 
-            # 파라미터 입력
-            orgdb = st.selectbox("OrgDb", ["org.Hs.eg.db", "org.Mm.eg.db"], index=0)
-            min_gs_size = st.number_input("Minimum gene set size (minGSSize)", value=10, step=1)
-            max_gs_size = st.number_input("Maximum gene set size (maxGSSize)", value=500, step=10)
-            pvalue_cutoff = st.number_input("P-value cutoff", value=0.05, step=0.01, format="%.2f")
-
-            # 세션 상태에 저장
-            st.session_state["gsea_params"] = {
-                "file_path": str(file_path),
-                "out_dir": str(gsea_out_dir),
-                "orgdb": orgdb,
+        # 선택된 CSV가 있을 때만 st.session_state에 저장
+        if csv_path:
+            st.session_state["gsego_params"] = {
+                "file_path": csv_path,           # FastAPI 모델에 맞게 변경
+                "out_dir": str(output_dir),
+                "orgdb": org_db,
                 "min_gs_size": min_gs_size,
                 "max_gs_size": max_gs_size,
                 "pvalue_cutoff": pvalue_cutoff,
+                "plot_width": plot_width,
+                "plot_height": plot_height,
             }
 
     # ----------------- Run -----------------
     with run_tab:
-        if st.button("Run GSEA Analysis via FastAPI"):
-            params = st.session_state.get("gsea_params")
-            if not params:
-                st.warning("Please configure parameters first.")
-            else:
-                with st.spinner("Running GSEA analysis on FastAPI server..."):
+        if "gsego_params" in st.session_state and combo_csv.exists():
+            if st.button("🚀 Run GSEA GO Analysis"):
+                payload = st.session_state["gsego_params"]
+
+                with st.spinner("Running GSEA GO Analysis via FastAPI..."):
                     try:
-                        response = requests.post(FASTAPI_GSEGO, json=params, timeout=600)
+                        response = requests.post(FASTAPI_GSEGO, json=payload, stream=False)
+
                         if response.status_code == 200:
-                            result = response.json()
-                            st.success(result.get("message", "✅ GSEA completed successfully!"))
-                            if result.get("stdout"):
-                                st.text_area("R Output Log", result["stdout"], height=300)
+                            # 결과 ZIP 저장 경로
+                            download_path = output_dir / "gsego.zip"
+
+                            # 기존 output_dir 삭제 후 재생성
+                            if output_dir.exists():
+                                shutil.rmtree(output_dir)
+                            output_dir.mkdir(parents=True, exist_ok=True)
+
+                            # ZIP 파일 저장
+                            download_path.write_bytes(response.content)
+
+                            # ZIP 압축 해제
+                            shutil.unpack_archive(str(download_path), extract_dir=str(output_dir))
+
+                            # ZIP 파일 삭제
+                            if download_path.exists():
+                                download_path.unlink()
+
+                            st.success("📦 GSEA GO results downloaded and unzipped successfully!")
+
                         else:
-                            st.error(f"❌ FastAPI request failed: {response.status_code}")
-                            st.text_area("Error Details", response.text, height=300)
+                            st.error(f"❌ Server error: {response.text}")
                     except requests.exceptions.RequestException as e:
-                        st.error(f"🚨 Request failed: {e}")
+                        st.error(f"Connection failed: {e}")
+        else:
+            st.info("Please complete DEG filtering first before running GSEA GO Analysis.")
 
     # ----------------- Result -----------------
     with result_tab:
-        gsea_out_dir = Path(st.session_state.workspace, "gsea-results")
-        ontologies = ["BP", "CC", "MF"]
-        ontology_tabs = st.tabs(ontologies)
+        if output_dir.exists():
+            ontologies = ["BP", "CC", "MF"]
+            ontology_tabs = st.tabs(ontologies)
 
-        for ont_tab, ont in zip(ontology_tabs, ontologies):
-            with ont_tab:
-                csv_file = gsea_out_dir / f"gse_{ont}.csv"
-                st.markdown(f"**Results for {ont}:**")
-                if csv_file.exists():
-                    df = pd.read_csv(csv_file)
-                    if df.empty:
-                        st.info(f"No significant results found for {ont}.")
+            for ont_tab, ont in zip(ontology_tabs, ontologies):
+                with ont_tab:
+                    plot_file = output_dir / f"gsego_{ont}.svg"
+                    st.markdown(f"### {ont} Ontology Results")
+                    if plot_file.exists():
+                        st.image(str(plot_file), width=750)
                     else:
-                        st.dataframe(df, use_container_width=True, height=300)
-                else:
-                    st.info(f"{csv_file.name} not found.")
+                        st.warning(f"No plot found for {ont}")
+        else:
+            st.info("No GSEA GO results found. Please run the analysis first.")
 
     # ----------------- Download -----------------
     with download_tab:
-        gsea_out_dir = Path(st.session_state.workspace, "gsea-results")
-        if gsea_out_dir.exists() and any(gsea_out_dir.iterdir()):
+        if output_dir.exists() and any(output_dir.iterdir()):
             with tempfile.TemporaryDirectory() as tmpdir:
-                zip_path = shutil.make_archive(os.path.join(tmpdir, "GSEA_results"), "zip", gsea_out_dir)
+                zip_path = shutil.make_archive(os.path.join(tmpdir, "GSEA_GO_results"), "zip", output_dir)
                 with open(zip_path, "rb") as f:
                     st.download_button(
-                        label="⬇️ Download GSEA Results (ZIP)",
+                        label="⬇️ Download GSEA GO Results (ZIP)",
                         data=f,
-                        file_name="GSEA_results.zip",
+                        file_name="GSEA_GO_results.zip",
                         mime="application/zip",
                     )
         else:
-            st.info("No GSEA results available for download.")
+            st.info("No GSEA GO results available for download.")
