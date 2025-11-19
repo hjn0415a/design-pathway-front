@@ -49,20 +49,13 @@ with heatmap_tab:
     # Run
     with run_tab:
         if csv_files:
-            selected_csv = st.selectbox(
-                "Select a CSV file to analyze:",
-                [Path(f).name for f in csv_files]
-            )
-            # FastAPI에서 참조할 절대 경로
-            csv_path = str(Path(st.session_state.workspace, "csv-files", selected_csv))
-
-            # 👇 여기서 csv_path를 화면에 표시
+            # 자동으로 첫 번째 CSV 파일 사용
+            csv_path = str(Path(csv_files[0]))  # 이미 csv_files는 절대 경로 문자열 리스트
             st.info(f"📂 CSV Path: {csv_path}")
-
 
             output_svg_heatmap = Path(
                 st.session_state.workspace,
-                selected_csv.replace(".csv", "_heatmap.svg")
+                Path(csv_files[0]).name.replace(".csv", "_heatmap.svg")
             )
 
             if st.button("Run Heatmap"):

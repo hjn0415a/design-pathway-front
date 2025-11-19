@@ -55,12 +55,13 @@ with emap_tab:
         pval_threshold = st.number_input("P-value threshold", value=0.05, step=0.01, format="%.2f")
 
         combo_root = deg_dir
+        enrich_dir = Path(st.session_state.workspace, "Enrichment", "out")  # ✅ 여기로 변경
 
         st.write("**DEG directory:**", str(deg_dir))
         st.write("**Output directory:**", str(output_dir))
 
         st.session_state["emap_params"] = {
-            "result_root": str(deg_dir),
+            "result_root": str(enrich_dir),
             "output_root": str(output_dir),
             "combo_root": str(combo_root),
             "fc_threshold": fc_threshold,
@@ -111,15 +112,15 @@ with emap_tab:
 
     # ----------------- Result -----------------
     with result_tab:
-        if combo_csv.exists():
-            combos = pd.read_csv(combo_csv)["combo"].tolist()
-            for combo in combos:
-                st.markdown(f"### {combo}")
-                plot_file = output_dir / combo / "figure" / "emapplot.svg"
-                if plot_file.exists():
-                    st.image(str(plot_file), width=750)
-                else:
-                    st.warning(f"No Emap plot found for {combo}")
+        # FC/p-value 기준으로 폴더 이름 지정
+        combo_name = f"FC{fc_threshold}_p{pval_threshold}"
+        for ont in ["BP", "CC", "MF"]:
+            st.markdown(f"### {combo_name} - {ont}")
+            plot_file = output_dir / combo_name / f"emap_{ont}.svg"  # plot 파일명도 e.g., emap_BP.svg
+            if plot_file.exists():
+                st.image(str(plot_file), width=750)
+            else:
+                st.warning(f"No Emap plot found for {combo_name} - {ont}")
 
     # ----------------- Download -----------------
     with download_tab:

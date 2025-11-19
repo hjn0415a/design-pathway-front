@@ -10,7 +10,7 @@ st.markdown("## Upload CSV Files")
 csv_dir = Path(st.session_state.workspace, "csv-files")
 csv_dir.mkdir(parents=True, exist_ok=True)
 
-FASTAPI_UPLOAD_URL = "http://fastapi:8000/api/upload-csv"
+FASTAPI_UPLOAD_URL = "http://design-pathway-backend:8000/api/upload-csv"
 
 with st.form("csv-upload", clear_on_submit=True):
     files = st.file_uploader("Upload CSV files", type=["csv"], accept_multiple_files=True)

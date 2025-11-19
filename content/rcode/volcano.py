@@ -6,10 +6,10 @@ from src.common.common import page_setup
 
 # ----------------- 기본 설정 -----------------
 params = page_setup()
-st.title("Volcano / Enhanced Volcano Plot Dashboard")
+st.title("Volcano Plot")
 
 FASTAPI_VOLCANO = os.getenv("FASTAPI_VOLCANO", "http://fastapi:8000/api/volcano/")
-FASTAPI_ENHANCED = os.getenv("FASTAPI_VOLCANO", "http://fastapi:8000/api/volcano/enhanced")
+FASTAPI_ENHANCED = os.getenv("FASTAPI_ENHANCED", "http://fastapi:8000/api/volcano/enhanced/")
 
 # ----------------- 업로드된 CSV 확인 -----------------
 if "workspace" not in st.session_state:
@@ -40,12 +40,11 @@ with volcano_tab:
         fc_cutoff = st.number_input("Fold Change Cutoff (log2)", value=1.0, key="volcano_fc")
         pval_cutoff = st.number_input("P-value Cutoff", value=0.05, format="%.4f", key="volcano_pval")
 
+    # Run
     with run_tab:
         if csv_files:
-            selected_csv = st.selectbox("Select CSV file:", [Path(f).name for f in csv_files])
-            csv_path = str(Path(st.session_state.workspace, "csv-files", selected_csv))
-            output_svg_volcano = Path(st.session_state.workspace, selected_csv.replace(".csv", "_volcano.svg"))
-
+            csv_path = str(Path(csv_files[0]))
+            output_svg_volcano = Path(st.session_state.workspace, Path(csv_files[0]).name.replace(".csv", "_volcano.svg"))
             st.info(f"📂 CSV Path: {csv_path}")
 
             if st.button("Run Volcano Plot"):
@@ -55,7 +54,6 @@ with volcano_tab:
                         "fc_cutoff": fc_cutoff,
                         "pval_cutoff": pval_cutoff,
                     }
-
                     try:
                         response = requests.post(FASTAPI_VOLCANO, json=payload)
                         if response.status_code == 200:
@@ -67,21 +65,17 @@ with volcano_tab:
                     except requests.exceptions.RequestException as e:
                         st.error(f"Connection failed: {e}")
 
+    # Result
     with result_tab:
         if csv_files:
-            output_svg_volcano = Path(
-                st.session_state.workspace,
-                Path(csv_files[0]).name.replace(".csv", "_volcano.svg")
-            )
+            output_svg_volcano = Path(st.session_state.workspace, Path(csv_files[0]).name.replace(".csv", "_volcano.svg"))
             if output_svg_volcano.exists():
                 st.image(str(output_svg_volcano), caption="Volcano Plot", width=700)
 
+    # Download
     with download_tab:
         if csv_files:
-            output_svg_volcano = Path(
-                st.session_state.workspace,
-                Path(csv_files[0]).name.replace(".csv", "_volcano.svg")
-            )
+            output_svg_volcano = Path(st.session_state.workspace, Path(csv_files[0]).name.replace(".csv", "_volcano.svg"))
             if output_svg_volcano.exists():
                 with open(output_svg_volcano, "rb") as f:
                     st.download_button(
@@ -100,12 +94,11 @@ with enhanced_tab:
         fc_cutoff = st.number_input("Fold Change Cutoff (log2)", value=1.0, key="enhanced_fc")
         pval_cutoff = st.number_input("P-value Cutoff", value=0.05, format="%.4f", key="enhanced_pval")
 
+    # Run
     with run_tab:
         if csv_files:
-            selected_csv = st.selectbox("Select CSV file:", [Path(f).name for f in csv_files], key="enhanced_select")
-            csv_path = str(Path(st.session_state.workspace, "csv-files", selected_csv))
-            output_svg_enhanced = Path(st.session_state.workspace, selected_csv.replace(".csv", "_enhanced_volcano.svg"))
-
+            csv_path = str(Path(csv_files[0]))
+            output_svg_enhanced = Path(st.session_state.workspace, Path(csv_files[0]).name.replace(".csv", "_enhanced_volcano.svg"))
             st.info(f"📂 CSV Path: {csv_path}")
 
             if st.button("Run EnhancedVolcano Plot"):
@@ -115,7 +108,6 @@ with enhanced_tab:
                         "fc_cutoff": fc_cutoff,
                         "pval_cutoff": pval_cutoff,
                     }
-
                     try:
                         response = requests.post(FASTAPI_ENHANCED, json=payload)
                         if response.status_code == 200:
@@ -127,21 +119,17 @@ with enhanced_tab:
                     except requests.exceptions.RequestException as e:
                         st.error(f"Connection failed: {e}")
 
+    # Result
     with result_tab:
         if csv_files:
-            output_svg_enhanced = Path(
-                st.session_state.workspace,
-                Path(csv_files[0]).name.replace(".csv", "_enhanced_volcano.svg")
-            )
+            output_svg_enhanced = Path(st.session_state.workspace, Path(csv_files[0]).name.replace(".csv", "_enhanced_volcano.svg"))
             if output_svg_enhanced.exists():
                 st.image(str(output_svg_enhanced), caption="EnhancedVolcano Plot", width=700)
 
+    # Download
     with download_tab:
         if csv_files:
-            output_svg_enhanced = Path(
-                st.session_state.workspace,
-                Path(csv_files[0]).name.replace(".csv", "_enhanced_volcano.svg")
-            )
+            output_svg_enhanced = Path(st.session_state.workspace, Path(csv_files[0]).name.replace(".csv", "_enhanced_volcano.svg"))
             if output_svg_enhanced.exists():
                 with open(output_svg_enhanced, "rb") as f:
                     st.download_button(

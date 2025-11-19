@@ -12,7 +12,6 @@ from src.common.common import page_setup
 params = page_setup()
 st.title("🧬 DEG Analysis")
 
-# FastAPI 엔드포인트 (환경변수 or 기본값)
 FASTAPI_DEG = os.getenv("FASTAPI_DEG", "http://design-pathway-backend:8000/api/deg/")
 
 # ----------------- 업로드된 CSV 확인 -----------------
@@ -28,7 +27,10 @@ else:
         st.warning("⚠️ No CSV files found. Please upload a CSV file first.")
         csv_files = []
     else:
+        # 항상 첫 번째 CSV 사용
         csv_files = [str(p) for p in csv_paths]
+        csv_path = str(Path(csv_files[0]))
+        result_dir = Path(st.session_state.workspace, "Deg")
 
 # ----------------- 메인 탭 -----------------
 main_tabs = st.tabs(["🧬 DEG Filtering"])
@@ -40,22 +42,11 @@ with deg_tab:
 
     # ----------------- Configure -----------------
     with configure_tab:
-        if csv_files:
-            selected_csv = st.selectbox(
-                "Select a CSV file to analyze:",
-                [Path(f).name for f in csv_files]
-            )
-            csv_path = str(Path(st.session_state.workspace, "csv-files", selected_csv))
-            result_dir = Path(st.session_state.workspace, "Deg")
-        else:
-            csv_path = ""
-            result_dir = None
-
         fc_input = st.text_input("Fold Change thresholds (comma-separated)", "1.5,2")
         pval_input = st.text_input("P-value thresholds (comma-separated)", "0.05,0.01")
 
         st.session_state["deg_params"] = {
-            "csv_path": csv_path,
+            "csv_path": csv_path if csv_files else "",
             "fc_input": fc_input,
             "pval_input": pval_input
         }
@@ -63,33 +54,29 @@ with deg_tab:
     # ----------------- Run -----------------
     with run_tab:
         if csv_files:
-            selected_csv = Path(csv_path).name
             st.info(f"📂 CSV Path: {csv_path}")
 
             if st.button("🚀 Run DEG Filtering"):
                 params = st.session_state.get("deg_params", {})
-                st.info(params)
                 with st.spinner("Running DEG filtering via FastAPI..."):
                     try:
-                        # ✅ FastAPI의 Form(...) 구조에 맞게 data로 전송
                         response = requests.post(FASTAPI_DEG, data=params, stream=False)
-        
-                        if response.status_code == 200:
 
-                            download_path = Path(result_dir, "deg.zip")
+                        if response.status_code == 200:
+                            download_path = result_dir / "deg.zip"
                             if result_dir.exists():
                                 shutil.rmtree(result_dir)
                             download_path.parent.mkdir(parents=True, exist_ok=True)
 
-                            # ✅ ZIP 파일 저장
+                            # ZIP 파일 저장
                             download_path.write_bytes(response.content)
                             shutil.unpack_archive(str(download_path), extract_dir=str(result_dir))
 
-                            # ✅ deg.zip 파일 삭제
+                            # deg.zip 파일 삭제
                             if download_path.exists():
                                 download_path.unlink()
 
-                            st.success("📦 Unzipped results into workspace successfully!")
+                            st.success("✅ Deg generated successfully!")
 
                         else:
                             st.error(f"❌ Server error: {response.text}")

@@ -71,7 +71,7 @@ with gsea_tab:
         # 선택된 CSV가 있을 때만 st.session_state에 저장
         if csv_path:
             st.session_state["gsego_params"] = {
-                "file_path": csv_path,           # FastAPI 모델에 맞게 변경
+                "file_path": csv_path,
                 "out_dir": str(output_dir),
                 "orgdb": org_db,
                 "min_gs_size": min_gs_size,
@@ -127,12 +127,20 @@ with gsea_tab:
 
             for ont_tab, ont in zip(ontology_tabs, ontologies):
                 with ont_tab:
-                    plot_file = output_dir / f"gsego_{ont}.svg"
+                    csv_file = output_dir / f"gse_{ont}.csv"  # gsego_{ont}.svg → gse_{ont}.csv
                     st.markdown(f"### {ont} Ontology Results")
-                    if plot_file.exists():
-                        st.image(str(plot_file), width=750)
+
+                    if csv_file.exists():
+                        try:
+                            df = pd.read_csv(csv_file)
+                            if df.empty:
+                                st.info("No enriched terms found for this ontology.")
+                            else:
+                                st.dataframe(df)  # 테이블로 출력
+                        except Exception as e:
+                            st.error(f"Failed to read CSV file: {e}")
                     else:
-                        st.warning(f"No plot found for {ont}")
+                        st.warning(f"No CSV found for {ont}")
         else:
             st.info("No GSEA GO results found. Please run the analysis first.")
 

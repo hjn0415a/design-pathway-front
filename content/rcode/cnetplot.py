@@ -56,8 +56,6 @@ with cnet_tab:
         )
         combo_root = deg_dir  # combo_names.csv가 있는 DEG 폴더
         enrich_dir = Path(st.session_state.workspace, "Enrichment", "out")
-        st.write("**DEG directory:**", str(deg_dir))
-        st.write("**Output directory:**", str(output_dir))
 
         st.session_state["cnet_params"] = {
             "enrich_root": str(enrich_dir),

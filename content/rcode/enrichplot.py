@@ -48,10 +48,6 @@ with enrich_tab:
         plot_width = st.number_input("Plot width", value=8.0, step=0.5)
         plot_height = st.number_input("Plot height", value=6.0, step=0.5)
 
-        # ✅ 디렉터리 경로 출력
-        st.write("**DEG directory:**", str(deg_dir))
-        st.write("**Output directory:**", str(output_dir))
-
         st.session_state["enrich_params"] = {
             "result_root": str(deg_dir),
             "output_root": str(output_dir),
@@ -108,19 +104,65 @@ with enrich_tab:
             for ont_tab, ont in zip(ontology_tabs, ["BP", "CC", "MF"]):
                 with ont_tab:
                     st.subheader(f"Ontology: {ont}")
+
+                    # 각 combo마다 (plot_file, result_file) 쌍 생성
+                    pairs = []
                     for combo in combos:
-                        st.markdown(f"### {combo}")
                         result_file = output_dir / combo / f"GO_{ont}_result.csv"
                         plot_file = output_dir / combo / "figure" / f"GO_{ont}.svg"
+                        pairs.append((combo, plot_file if plot_file.exists() else None, result_file if result_file.exists() else None))
 
-                        if result_file.exists():
-                            df = pd.read_csv(result_file)
-                            st.markdown(f"**Genes: {len(df)}**")
-                            if plot_file.exists():
-                                st.image(str(plot_file), width=750)
-                            st.dataframe(df, use_container_width=True, height=250)
-                        else:
-                            st.warning(f"No results found for {combo} ({ont})")
+                    if not pairs:
+                        st.info("No results available.")
+                        continue
+
+                    # 2개씩 묶어서 한 행에 2열 출력
+                    for i in range(0, len(pairs), 2):
+                        left = pairs[i]
+                        right = pairs[i+1] if i+1 < len(pairs) else None
+
+                        cols = st.columns(2, gap="large")
+                        # LEFT column
+                        with cols[0]:
+                            combo, plot_file, result_file = left
+                            st.markdown(f"### {combo}")
+                            if plot_file:
+                                st.image(str(plot_file), use_container_width=True)
+                            else:
+                                st.info("No plot available.")
+                            if result_file:
+                                try:
+                                    df = pd.read_csv(result_file)
+                                    st.markdown(f"**Rows: {len(df)}**")
+                                    st.dataframe(df, use_container_width=True, height=300)
+                                except Exception as e:
+                                    st.error(f"Failed to read table for {combo}: {e}")
+                            else:
+                                st.info("No result table available.")
+
+                        # RIGHT column (if exists)
+                        with cols[1]:
+                            if right:
+                                combo, plot_file, result_file = right
+                                st.markdown(f"### {combo}")
+                                if plot_file:
+                                    st.image(str(plot_file), use_container_width=True)
+                                else:
+                                    st.info("No plot available.")
+                                if result_file:
+                                    try:
+                                        df = pd.read_csv(result_file)
+                                        st.markdown(f"**Rows: {len(df)}**")
+                                        st.dataframe(df, use_container_width=True, height=300)
+                                    except Exception as e:
+                                        st.error(f"Failed to read table for {combo}: {e}")
+                                else:
+                                    st.info("No result table available.")
+                            else:
+                                # 빈 칸을 채우지 않음 — 필요하면 안내문 표시 가능
+                                st.write("") 
+        else:
+            st.info("Please complete DEG filtering first.")
 
     # ----------------- Download -----------------
     with download_tab:
