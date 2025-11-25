@@ -14,20 +14,6 @@ st.title("🧬 GSEA GO Analysis")
 
 FASTAPI_GSEGO = os.getenv("FASTAPI_GSEGO", "http://design-pathway-backend:8000/api/gsego")
 
-# ----------------- 업로드된 DEG 결과 확인 -----------------
-if "workspace" not in st.session_state:
-    st.warning("⚠️ Workspace not initialized. Please go to Upload or DEG tab first.")
-    csv_files = []
-else:
-    deg_dir = Path(st.session_state.workspace, "Deg")
-    deg_dir.mkdir(parents=True, exist_ok=True)
-
-    combo_csv = deg_dir / "combo_names.csv"
-    if not combo_csv.exists():
-        st.warning("⚠️ No DEG results found. Please run DEG filtering first.")
-        csv_files = []
-    else:
-        combos = pd.read_csv(combo_csv)["combo"].tolist()
 
 # ----------------- 메인 탭 -----------------
 main_tabs = st.tabs(["🧬 GSEA GO Analysis"])
@@ -49,8 +35,6 @@ with gsea_tab:
         plot_width = st.number_input("Plot width", value=8.0, step=0.5)
         plot_height = st.number_input("Plot height", value=6.0, step=0.5)
 
-        st.write("**DEG directory:**", str(deg_dir))
-        st.write("**Output directory:**", str(output_dir))
 
         # csv-files 폴더에서 업로드된 CSV 파일 목록 가져오기
         csv_dir = Path(st.session_state.workspace, "csv-files")
@@ -83,7 +67,7 @@ with gsea_tab:
 
     # ----------------- Run -----------------
     with run_tab:
-        if "gsego_params" in st.session_state and combo_csv.exists():
+        if "gsego_params" in st.session_state:
             if st.button("🚀 Run GSEA GO Analysis"):
                 payload = st.session_state["gsego_params"]
 
@@ -119,7 +103,7 @@ with gsea_tab:
         else:
             st.info("Please complete DEG filtering first before running GSEA GO Analysis.")
 
-    # ----------------- Result -----------------
+    # # ----------------- Result -----------------
     with result_tab:
         if output_dir.exists():
             ontologies = ["BP", "CC", "MF"]
@@ -144,7 +128,7 @@ with gsea_tab:
         else:
             st.info("No GSEA GO results found. Please run the analysis first.")
 
-    # ----------------- Download -----------------
+    # # ----------------- Download -----------------
     with download_tab:
         if output_dir.exists() and any(output_dir.iterdir()):
             with tempfile.TemporaryDirectory() as tmpdir:

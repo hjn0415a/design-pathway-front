@@ -12,6 +12,8 @@ csv_dir.mkdir(parents=True, exist_ok=True)
 
 FASTAPI_UPLOAD_URL = "http://design-pathway-backend:8000/api/upload-csv"
 
+
+
 with st.form("csv-upload", clear_on_submit=True):
     files = st.file_uploader("Upload CSV files", type=["csv"], accept_multiple_files=True)
     submitted = st.form_submit_button("Add CSV files")
@@ -35,10 +37,32 @@ if submitted and files:
         except requests.exceptions.RequestException as e:
             st.error(f"Connection error while uploading {file.name}: {e}")
 
+
+
     # 첫 번째 CSV 미리보기
-    try:
-        df = pd.read_csv(files[0])
-        st.markdown("### Uploaded CSV Preview")
-        st.dataframe(df)
-    except Exception as e:
-        st.error(f"Error reading CSV: {str(e)}")
+
+
+
+csv_dir = Path(st.session_state.workspace, "csv-files")
+csv_paths = sorted([p for p in csv_dir.glob("*.csv")])
+csv_names = [p.name for p in csv_paths]
+
+# CSV가 없으면 경고
+if not csv_names:
+    st.warning("No CSV files found in the directory.")
+else:
+    selected_csv_name = st.selectbox("Select a CSV file", csv_names)
+    
+    if selected_csv_name is not None:
+        st.session_state.csv_name = selected_csv_name
+        selected_csv_path = csv_dir / selected_csv_name
+        st.session_state.selected_csv_path = selected_csv_path
+        st.write("Selected CSV path:", selected_csv_path)
+        try:
+            df = pd.read_csv(st.session_state.selected_csv_path)
+            st.markdown("### Uploaded CSV Preview")
+            st.dataframe(df)
+        except Exception as e:
+            st.error(f"Error reading CSV: {str(e)}")
+    else:
+        st.info("Please select a CSV file.")    

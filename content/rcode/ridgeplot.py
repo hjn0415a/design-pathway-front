@@ -20,26 +20,8 @@ if "workspace" not in st.session_state:
     st.stop()
 
 workspace = Path(st.session_state.workspace)
-
-# CSV 파일이 저장된 폴더
-csv_dir = workspace / "csv-files"
-csv_dir.mkdir(parents=True, exist_ok=True)
-
-# 업로드된 CSV 파일 목록
-csv_paths = sorted(list(csv_dir.glob("*.csv")))
-
-if not csv_paths:
-    st.warning("⚠️ No CSV files found in the workspace csv-files folder. Please upload a CSV file first.")
-    st.stop()
-
-# CSV 전체 경로 리스트
-csv_files = [str(p) for p in csv_paths]
-
-# Ridgeplot 결과 폴더
-ridge_dir = workspace / "Ridgeplot"
-ridge_dir.mkdir(parents=True, exist_ok=True)
-
-
+gseaplot_dir = Path(st.session_state.workspace, "GSEA_GO", "out")
+ridge_dir = Path(st.session_state.workspace, "GSEA_GO", "ridge")
 # ----------------- Main Tabs -----------------
 main_tabs = st.tabs(["📊 Ridgeplot (GSEA)"])
 ridge_tab = main_tabs[0]
@@ -50,20 +32,13 @@ with ridge_tab:
 
     # ----------------- CONFIGURE -----------------
     with configure_tab:
-        selected_csv = st.selectbox(
-            "Select a CSV file:",
-            [Path(f).name for f in csv_files]
-        )
-
-        # FastAPI에 넘길 절대 경로
-        input_file = str(csv_dir / selected_csv)
-        st.info(f"📂 Using CSV: {input_file}")
+        
 
         width = st.number_input("Plot width", value=10.0, step=0.5)
         height = st.number_input("Plot height", value=8.0, step=0.5)
 
         st.session_state["ridgeplot_params"] = {
-            "input_file": input_file,
+            "input_file": str(gseaplot_dir),
             "output_dir": str(ridge_dir),
             "width": width,
             "height": height,

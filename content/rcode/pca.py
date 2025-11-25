@@ -3,6 +3,7 @@ import streamlit as st
 import requests
 from pathlib import Path
 from src.common.common import page_setup
+import pandas as pd
 
 # 기본 설정
 params = page_setup()
@@ -10,21 +11,6 @@ st.title("📉 PCA (Principal Component Analysis)")
 
 FASTAPI_PCA = os.getenv("FASTAPI_PCA", "http://design-pathway-backend:8000/api/pca/")
 
-# ----------------- 업로드된 CSV 확인 -----------------
-if "workspace" not in st.session_state:
-    st.warning("⚠️ Workspace not initialized. Please go to page setup or Upload tab first.")
-    csv_files = []
-else:
-    csv_dir = Path(st.session_state.workspace, "csv-files")
-    csv_dir.mkdir(parents=True, exist_ok=True)
-
-    csv_paths = sorted([p for p in csv_dir.glob("*.csv")])
-
-    if not csv_paths:
-        st.warning("⚠️ No CSV files found in the workspace csv-files folder. Please upload a CSV file first in the Upload tab.")
-        csv_files = []
-    else:
-        csv_files = [str(p) for p in csv_paths]
 
 # ----------------- 메인 탭 -----------------
 main_tab = st.tabs(["📉 PCA Plot"])[0]
@@ -40,23 +26,25 @@ with main_tab:
         pointshape_pca = st.number_input("Point Shape", value=16, step=1)
         pointsize_pca = st.number_input("Point Size", value=3.5, step=0.5)
         text_size_pca = st.number_input("Label Text Size", value=4.0, step=0.5)
-
+        try:
+            df = pd.read_csv(st.session_state.selected_csv_path)
+            st.markdown("선택된 CSV 파일")
+            st.dataframe(df)
+        except Exception as e:
+            st.warning(f"CSV파일을 file upload에서 먼저 선택해주세요." )
     # Run
     with run_tab:
-        if csv_files:
+        if "selected_csv_path" in st.session_state:
             # 자동으로 첫 번째 CSV 파일 사용
-            csv_path = str(Path(csv_files[0]))
+            csv_path = st.session_state.selected_csv_path
             st.info(f"📂 CSV Path: {csv_path}")
-
-            output_svg = Path(
-                st.session_state.workspace,
-                Path(csv_files[0]).name.replace(".csv", "_PCA.svg")
-            )
-
-            if st.button("Run PCA via FastAPI"):
-                with st.spinner("Running PCA via FastAPI..."):
+            pca_dir = Path(st.session_state.workspace) / "pca"
+            pca_dir.mkdir(parents=True, exist_ok=True)
+            output_svg_pca = Path(pca_dir,Path(st.session_state.selected_csv_path).name.replace(".csv", "_PCA.svg"))
+            if st.button("Run PCA"):
+                with st.spinner("Running PCA"):
                     payload = {
-                        "csv_path": csv_path,
+                        "csv_path": str(csv_path),
                         "width": width_pca,
                         "height": height_pca,
                         "pointshape": pointshape_pca,
@@ -66,7 +54,7 @@ with main_tab:
                     try:
                         response = requests.post(FASTAPI_PCA, json=payload)
                         if response.status_code == 200:
-                            with open(output_svg, "wb") as f:
+                            with open(output_svg_pca, "wb") as f:
                                 f.write(response.content)
                             st.success("✅ PCA plot generated successfully")
                         else:
@@ -78,21 +66,13 @@ with main_tab:
 
     # Result
     with result_tab:
-        if csv_files:
-            output_svg_pca = Path(
-                st.session_state.workspace,
-                Path(csv_files[0]).name.replace(".csv", "_PCA.svg")
-            )
+        if "selected_csv_path" in st.session_state:
             if output_svg_pca.exists():
                 st.image(str(output_svg_pca), caption="PCA Plot", width=700)
 
     # Download
     with download_tab:
-        if csv_files:
-            output_svg_pca = Path(
-                st.session_state.workspace,
-                Path(csv_files[0]).name.replace(".csv", "_PCA.svg")
-            )
+        try:
             if output_svg_pca.exists():
                 with open(output_svg_pca, "rb") as f:
                     st.download_button(
@@ -101,3 +81,6 @@ with main_tab:
                         file_name=output_svg_pca.name,
                         mime="image/svg+xml"
                     )
+
+        except NameError:
+            st.warning("⚠️ heatmap을 먼저 실행해주세요.")
