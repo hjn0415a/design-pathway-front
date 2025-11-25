@@ -19,7 +19,7 @@ if "workspace" not in st.session_state:
     st.warning("⚠️ Workspace not initialized. Please go to Upload or DEG tab first.")
     csv_files = []
 else:
-    deg_dir = Path(st.session_state.workspace, "Deg")
+    deg_dir = Path(st.session_state.workspace, "deg")
     deg_dir.mkdir(parents=True, exist_ok=True)
 
     combo_csv = deg_dir / "combo_names.csv"
