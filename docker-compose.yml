@@ -4,8 +4,8 @@ services:
   streamlit:
     build: .
     container_name: design-pathway-frontend
-    ports:
-      - "8501:8501"
+    expose:
+      - "8501"
     networks:
       - design-pathway-net
     volumes:
@@ -24,6 +24,20 @@ services:
       FASTAPI_RIDGEPLOT: "http://design-pathway-backend:8000/api/ridgeplot"
       FASTAPI_PATHWAY_GENE: "http://design-pathway-backend:8000/api/pathway_gene"
 
+  nginx:
+    image: nginx:latest
+    container_name: frontend-nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt/live/app.fullseeomics.com:/etc/letsencrypt/live/app.fullseeomics.com:ro
+    depends_on:
+      - streamlit
+    networks:
+      - design-pathway-net
+
 networks:
   design-pathway-net:
-    external: true 
+    external: true
