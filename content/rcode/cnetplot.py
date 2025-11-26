@@ -21,7 +21,7 @@ if "workspace" not in st.session_state:
     st.warning("⚠️ Workspace not initialized. Please go to Upload or DEG tab first.")
     csv_files = []
 else:
-    deg_dir = Path(st.session_state.workspace, "Deg")
+    deg_dir = Path(st.session_state.workspace, "deg")
     deg_dir.mkdir(parents=True, exist_ok=True)
 
     combo_csv = deg_dir / "combo_names.csv"
@@ -49,11 +49,19 @@ with cnet_tab:
         plot_width = st.number_input("Plot width", value=8.0, step=0.5)
         plot_height = st.number_input("Plot height", value=6.0, step=0.5)
 
+        
+        if os.path.exists(str(combo_csv)):
+            combo_df = pd.read_csv(combo_csv)
+            fc_values = sorted(list({float(c.split("_")[0][2:]) for c in combo_df["combo"]}))
+            pval_values = sorted(list({float(c.split("_")[1][1:]) for c in combo_df["combo"]}))
+
+            fc_threshold = st.selectbox("Select FC threshold", options=fc_values, index=0)
+            pval_threshold = st.selectbox("Select P-value threshold", options=pval_values, index=0)
+        else:
+            fc_threshold = None
+            pval_threshold = None
         # ✅ 누락된 필드 추가
-        fc_threshold = st.number_input("Fold change threshold", value=1.5, step=0.1, format="%.1f")
-        pval_threshold = st.number_input(
-            "P-value threshold", value=0.05, step=0.01, format="%.2f"
-        )
+
         combo_root = deg_dir  # combo_names.csv가 있는 DEG 폴더
         enrich_dir = Path(st.session_state.workspace, "Enrichment", "out")
 
@@ -109,7 +117,8 @@ with cnet_tab:
 
     # ----------------- Result -----------------
     with result_tab:
-        combo_name = f"FC{fc_threshold}_p{pval_threshold}"
+        
+        combo_name = f"FC{int(fc_threshold)}_p{pval_threshold}"
         for ont in ["BP", "CC", "MF"]:
             st.markdown(f"### {combo_name} - {ont}")
             plot_file = output_dir / combo_name /f"cnet_{ont}.svg"
