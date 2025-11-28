@@ -16,20 +16,7 @@ FASTAPI_CNET = os.getenv(
     "FASTAPI_CNET", "http://design-pathway-backend:8000/api/cnetplot"
 )
 
-# ----------------- 업로드된 DEG 결과 확인 -----------------
-if "workspace" not in st.session_state:
-    st.warning("⚠️ Workspace not initialized. Please go to Upload or DEG tab first.")
-    csv_files = []
-else:
-    deg_dir = Path(st.session_state.workspace, "deg")
-    deg_dir.mkdir(parents=True, exist_ok=True)
 
-    combo_csv = deg_dir / "combo_names.csv"
-    if not combo_csv.exists():
-        st.warning("⚠️ No DEG results found. Please run DEG filtering first.")
-        csv_files = []
-    else:
-        combos = pd.read_csv(combo_csv)["combo"].tolist()
 
 # ----------------- 메인 탭 -----------------
 main_tabs = st.tabs(["🧬 GO Cnet Plot"])
@@ -41,41 +28,66 @@ with cnet_tab:
 
     # ----------------- Configure -----------------
     with configure_tab:
-        output_dir = Path(st.session_state.workspace, "CnetPlot", "out")
-        output_dir.mkdir(parents=True, exist_ok=True)
+        analysis_info_path = Path(st.session_state.workspace) / "csv-files" / "output" / "analysis_info.csv"
+        method_options = []
+        selected_method = None
 
-        showCategory = st.number_input("Number of categories to show", value=5, step=1)
-        org_db = st.selectbox("OrgDb", ["org.Hs.eg.db", "org.Mm.eg.db"], index=0)
-        plot_width = st.number_input("Plot width", value=8.0, step=0.5)
-        plot_height = st.number_input("Plot height", value=6.0, step=0.5)
-
-        
-        if os.path.exists(str(combo_csv)):
-            combo_df = pd.read_csv(combo_csv)
-            fc_values = sorted(list({float(c.split("_")[0][2:]) for c in combo_df["combo"]}))
-            pval_values = sorted(list({float(c.split("_")[1][1:]) for c in combo_df["combo"]}))
-
-            fc_threshold = st.selectbox("Select FC threshold", options=fc_values, index=0)
-            pval_threshold = st.selectbox("Select P-value threshold", options=pval_values, index=0)
+        if analysis_info_path.exists():
+            try:
+                info_df = pd.read_csv(analysis_info_path)
+                # 'analysis_type' 컬럼에서 wald, LRT 추출
+                if "analysis_type" in info_df.columns:
+                    method_options = info_df["analysis_type"].dropna().unique().tolist()
+                else:
+                    st.warning("analysis_info.csv에 'analysis_type' 컬럼이 없습니다.")
+            except Exception as e:
+                st.warning(f"analysis_info.csv를 읽는 중 오류: {e}")
         else:
-            fc_threshold = None
-            pval_threshold = None
-        # ✅ 누락된 필드 추가
+            st.warning("analysis_info.csv 파일이 존재하지 않습니다.")
 
-        combo_root = deg_dir  # combo_names.csv가 있는 DEG 폴더
-        enrich_dir = Path(st.session_state.workspace, "Enrichment", "out")
+        if method_options:
+            selected_method = st.selectbox("분석 방법 선택", method_options)
 
-        st.session_state["cnet_params"] = {
-            "enrich_root": str(enrich_dir),
-            "output_root": str(output_dir),
-            "combo_root": str(combo_root),
-            "fc_threshold": fc_threshold,
-            "pval_threshold": pval_threshold,
-            "showCategory": showCategory,
-            "org_db": org_db,
-            "plot_width": plot_width,
-            "plot_height": plot_height,
-        }
+        else:
+            st.warning("분석 방법을 찾을 수 없습니다. DESeq2 분석을 먼저 실행해주세요.")
+        if selected_method:
+            workspace = Path(st.session_state.workspace)
+            deg_dir = workspace / "csv-files" / "output" / selected_method/ "deg"
+            output_dir = deg_dir / "cnetplot"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            combo_csv = deg_dir / "combo_names.csv"
+            showCategory = st.number_input("Number of categories to show", value=5, step=1)
+            org_db = st.selectbox("OrgDb", ["org.Hs.eg.db", "org.Mm.eg.db"], index=0)
+            plot_width = st.number_input("Plot width", value=8.0, step=0.5)
+            plot_height = st.number_input("Plot height", value=6.0, step=0.5)
+
+            
+            if os.path.exists(str(combo_csv)):
+                combo_df = pd.read_csv(combo_csv)
+                fc_values = sorted(list({float(c.split("_")[0][2:]) for c in combo_df["combo"]}))
+                pval_values = sorted(list({float(c.split("_")[1][1:]) for c in combo_df["combo"]}))
+
+                fc_threshold = st.selectbox("Select FC threshold", options=fc_values, index=0)
+                pval_threshold = st.selectbox("Select P-value threshold", options=pval_values, index=0)
+            else:
+                fc_threshold = None
+                pval_threshold = None
+            # ✅ 누락된 필드 추가
+
+            combo_root = deg_dir  # combo_names.csv가 있는 DEG 폴더
+            enrich_dir = Path(st.session_state.workspace, "Enrichment", "out")
+
+            st.session_state["cnet_params"] = {
+                "enrich_root": str(enrich_dir),
+                "output_root": str(output_dir),
+                "combo_root": str(combo_root),
+                "fc_threshold": fc_threshold,
+                "pval_threshold": pval_threshold,
+                "showCategory": showCategory,
+                "org_db": org_db,
+                "plot_width": plot_width,
+                "plot_height": plot_height,
+            }
 
     # ----------------- Run -----------------
     with run_tab:

@@ -33,78 +33,91 @@ with deg_tab:
 
     # ----------------- Configure -----------------
     with configure_tab:
+                # analysis_info.csv 경로
+        analysis_info_path = Path(st.session_state.workspace) / "csv-files" / "output" / "analysis_info.csv"
+        method_options = []
+        selected_method = None
+
+        if analysis_info_path.exists():
+            try:
+                info_df = pd.read_csv(analysis_info_path)
+                # 'analysis_type' 컬럼에서 wald, LRT 추출
+                if "analysis_type" in info_df.columns:
+                    method_options = info_df["analysis_type"].dropna().unique().tolist()
+                else:
+                    st.warning("analysis_info.csv에 'analysis_type' 컬럼이 없습니다.")
+            except Exception as e:
+                st.warning(f"analysis_info.csv를 읽는 중 오류: {e}")
+        else:
+            st.warning("analysis_info.csv 파일이 존재하지 않습니다.")
+
+        if method_options:
+            selected_method = st.selectbox("분석 방법 선택", method_options)
+            st.session_state.selected_method_pca = selected_method
+        else:
+            st.warning("분석 방법을 찾을 수 없습니다. DESeq2 분석을 먼저 실행해주세요.")
         fc_input = st.text_input("Fold Change thresholds (comma-separated)", "1.5,2")
         pval_input = st.text_input("P-value thresholds (comma-separated)", "0.05,0.01")
     # ----------------- Run -----------------
-        try:
-            df = pd.read_csv(st.session_state.selected_csv_path)
-            st.markdown("선택된 CSV 파일")
-            st.dataframe(df)
-        except Exception as e:
-            st.warning(f"CSV파일을 file upload에서 먼저 선택해주세요." )
 
     with run_tab:
-        if "selected_csv_path" in st.session_state:
-            csv_path = st.session_state.selected_csv_path
-            st.info(f"📂 CSV Path: {csv_path}")
-            deg_dir = Path(st.session_state.workspace) / "deg"
+        workspace = Path(st.session_state.workspace)
+        deg_dir = workspace / "csv-files" / "output" / selected_method/ "deg"
+        if st.button("🚀 Run DEG Filtering"):
+            with st.spinner("Running DEG filtering via FastAPI..."):
+                try:
+                    payload = {
+                    "workspace": workspace,
+                    "method": selected_method,
+                    "fc_input": fc_input,
+                    "pval_input": pval_input
+                        }
+                    response = requests.post(FASTAPI_DEG, data=payload, stream=False)
 
-            if st.button("🚀 Run DEG Filtering"):
-                with st.spinner("Running DEG filtering via FastAPI..."):
-                    try:
-                        payload = {
-                        "csv_path": csv_path,
-                        "fc_input": fc_input,
-                        "pval_input": pval_input
-                            }
-                        response = requests.post(FASTAPI_DEG, data=payload, stream=False)
+                    if response.status_code == 200:
+                        download_path = deg_dir / "deg.zip"
+                        if deg_dir.exists():
+                            shutil.rmtree(deg_dir)
+                        download_path.parent.mkdir(parents=True, exist_ok=True)
 
-                        if response.status_code == 200:
-                            download_path = deg_dir / "deg.zip"
-                            if deg_dir.exists():
-                                shutil.rmtree(deg_dir)
-                            download_path.parent.mkdir(parents=True, exist_ok=True)
+                        # ZIP 파일 저장
+                        download_path.write_bytes(response.content)
+                        shutil.unpack_archive(str(download_path), extract_dir=str(deg_dir))
 
-                            # ZIP 파일 저장
-                            download_path.write_bytes(response.content)
-                            shutil.unpack_archive(str(download_path), extract_dir=str(deg_dir))
+                        # deg.zip 파일 삭제
+                        if download_path.exists():
+                            download_path.unlink()
 
-                            # deg.zip 파일 삭제
-                            if download_path.exists():
-                                download_path.unlink()
+                        st.success("✅ Deg generated successfully!")
 
-                            st.success("✅ Deg generated successfully!")
+                    else:
+                        st.error(f"❌ Server error: {response.text}")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Connection failed: {e}")
 
-                        else:
-                            st.error(f"❌ Server error: {response.text}")
-                    except requests.exceptions.RequestException as e:
-                        st.error(f"Connection failed: {e}")
-        else:
-            st.info("Please upload a CSV file first before running.")
 
 #----------------- Result ----------------
     with result_tab:
-        if "selected_csv_path" in st.session_state:
-            if deg_dir.exists():
-                combo_csv = deg_dir / "combo_names.csv"
-                if combo_csv.exists():
-                    combos = pd.read_csv(combo_csv)["combo"].tolist()
-                    if combos:
-                        st.markdown("### 🧩 Filtered Results by Combination")
-                        combo_tabs = st.tabs(combos)
-                        for combo, tab in zip(combos, combo_tabs):
-                            with tab:
-                                file_path = deg_dir / combo / "filtered_gene_list.csv"
-                                if file_path.exists():
-                                    df = pd.read_csv(file_path)
-                                    st.markdown(f"**Genes: {len(df)}**")
-                                    st.dataframe(df, use_container_width=True)
-                                else:
-                                    st.warning(f"No results found for {combo}")
-                else:
-                    st.info("No DEG results found yet.")
+        if deg_dir.exists():
+            combo_csv = deg_dir / "combo_names.csv"
+            if combo_csv.exists():
+                combos = pd.read_csv(combo_csv)["combo"].tolist()
+                if combos:
+                    st.markdown("### 🧩 Filtered Results by Combination")
+                    combo_tabs = st.tabs(combos)
+                    for combo, tab in zip(combos, combo_tabs):
+                        with tab:
+                            file_path = deg_dir / combo / "filtered_gene_list.csv"
+                            if file_path.exists():
+                                df = pd.read_csv(file_path)
+                                st.markdown(f"**Genes: {len(df)}**")
+                                st.dataframe(df, use_container_width=True)
+                            else:
+                                st.warning(f"No results found for {combo}")
             else:
-                st.warning("Output directory does not exist.")
+                st.info("No DEG results found yet.")
+        else:
+            st.warning("Output directory does not exist.")
 
     # # ----------------- Download -----------------
     with download_tab:
