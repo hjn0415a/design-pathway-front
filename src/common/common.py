@@ -313,7 +313,7 @@ def render_sidebar(page: str = "") -> None:
             if st.session_state.location == "local":
                 workspaces_dir = Path("..", "workspaces-"+ st.session_state.settings["repository-name"])
             else:
-                workspaces_dir = Path("..")
+                workspaces_dir = Path("../users")
             # Online: show current workspace name in info text and option to change to other existing workspace
             if st.session_state.location == "online":
                 # Change workspace...
