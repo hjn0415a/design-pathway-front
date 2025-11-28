@@ -32,7 +32,7 @@ services:
       - "80:80"
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - /etc/letsencrypt/live/app.fullseeomics.com:/etc/letsencrypt/live/app.fullseeomics.com:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - streamlit
     networks:
