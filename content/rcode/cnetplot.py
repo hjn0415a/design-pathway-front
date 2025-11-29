@@ -28,6 +28,7 @@ with cnet_tab:
 
     # ----------------- Configure -----------------
     with configure_tab:
+        workspace = Path(st.session_state.workspace)
         analysis_info_path = Path(st.session_state.workspace) / "csv-files" / "output" / "analysis_info.csv"
         method_options = []
         selected_method = None
@@ -51,16 +52,14 @@ with cnet_tab:
         else:
             st.warning("분석 방법을 찾을 수 없습니다. DESeq2 분석을 먼저 실행해주세요.")
         if selected_method:
-            workspace = Path(st.session_state.workspace)
-            deg_dir = workspace / "csv-files" / "output" / selected_method/ "deg"
-            output_dir = deg_dir / "cnetplot"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            combo_csv = deg_dir / "combo_names.csv"
+
             showCategory = st.number_input("Number of categories to show", value=5, step=1)
             org_db = st.selectbox("OrgDb", ["org.Hs.eg.db", "org.Mm.eg.db"], index=0)
             plot_width = st.number_input("Plot width", value=8.0, step=0.5)
             plot_height = st.number_input("Plot height", value=6.0, step=0.5)
-
+               
+            deg_dir = workspace / "csv-files" / "output" / selected_method/ "deg"
+            combo_csv = deg_dir / "combo_names.csv"
             
             if os.path.exists(str(combo_csv)):
                 combo_df = pd.read_csv(combo_csv)
@@ -74,9 +73,12 @@ with cnet_tab:
                 pval_threshold = None
             # ✅ 누락된 필드 추가
 
-            combo_root = deg_dir  # combo_names.csv가 있는 DEG 폴더
-            enrich_dir = Path(st.session_state.workspace, "Enrichment", "out")
-
+            deg_dir = workspace / "csv-files" / "output" / selected_method/ "deg"
+            combo_csv = deg_dir / "combo_names.csv"
+            combo_root = deg_dir  # combo_names.csv가 있는 
+            enrich_dir = workspace / "csv-files" / "output" / selected_method/ "deg"/"enrich"
+            output_dir = enrich_dir / f"FC{fc_threshold}_p{pval_threshold}"/"cnetplot"
+        
             st.session_state["cnet_params"] = {
                 "enrich_root": str(enrich_dir),
                 "output_root": str(output_dir),
@@ -133,7 +135,7 @@ with cnet_tab:
         combo_name = f"FC{int(fc_threshold)}_p{pval_threshold}"
         for ont in ["BP", "CC", "MF"]:
             st.markdown(f"### {combo_name} - {ont}")
-            plot_file = output_dir / combo_name /f"cnet_{ont}.svg"
+            plot_file = output_dir/f"cnet_{ont}.svg"
             if plot_file.exists():
                 st.image(str(plot_file), width=750)
             else:

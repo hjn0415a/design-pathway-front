@@ -25,8 +25,30 @@ with gsea_tab:
 
     # ----------------- Configure -----------------
     with configure_tab:
-        output_dir = Path(st.session_state.workspace, "GSEA_GO", "out")
-        output_dir.mkdir(parents=True, exist_ok=True)
+
+        analysis_info_path = Path(st.session_state.workspace) / "csv-files" / "output" / "analysis_info.csv"
+        method_options = []
+        selected_method = None
+
+        if analysis_info_path.exists():
+            try:
+                info_df = pd.read_csv(analysis_info_path)
+                # 'analysis_type' 컬럼에서 wald, LRT 추출
+                if "analysis_type" in info_df.columns:
+                    method_options = info_df["analysis_type"].dropna().unique().tolist()
+                else:
+                    st.warning("analysis_info.csv에 'analysis_type' 컬럼이 없습니다.")
+            except Exception as e:
+                st.warning(f"analysis_info.csv를 읽는 중 오류: {e}")
+        else:
+            st.warning("analysis_info.csv 파일이 존재하지 않습니다.")
+
+        if method_options:
+            selected_method = st.selectbox("분석 방법 선택", method_options)
+        else:
+            st.warning("분석 방법을 찾을 수 없습니다. DESeq2 분석을 먼저 실행해주세요.")    
+
+
 
         org_db = st.selectbox("OrgDb", ["org.Hs.eg.db", "org.Mm.eg.db"], index=0)
         min_gs_size = st.number_input("Minimum gene set size", value=10, step=1)
@@ -34,28 +56,14 @@ with gsea_tab:
         pvalue_cutoff = st.number_input("P-value cutoff", value=0.05, step=0.01, format="%.2f")
         plot_width = st.number_input("Plot width", value=8.0, step=0.5)
         plot_height = st.number_input("Plot height", value=6.0, step=0.5)
-
-
-        # csv-files 폴더에서 업로드된 CSV 파일 목록 가져오기
-        csv_dir = Path(st.session_state.workspace, "csv-files")
-        csv_dir.mkdir(parents=True, exist_ok=True)
-        csv_paths = sorted([p for p in csv_dir.glob("*.csv")])
-
-        if not csv_paths:
-            st.warning("⚠️ No CSV files found in csv-files folder. Please upload a CSV file first.")
-            csv_path = None
-        else:
-            selected_csv = st.selectbox(
-                "Select CSV file for GSEA GO Analysis",
-                [p.name for p in csv_paths]
-            )
-            csv_path = str(csv_dir / selected_csv)
-            st.info(f"📂 Selected CSV Path: {csv_path}")
-
+        workspace = Path(st.session_state.workspace)
+        csv_path = workspace / "csv-files" / "output" / selected_method/f"merged_results_{selected_method}.csv"
+        st.info(f"📂 Selected CSV Path: {csv_path}")
+        output_dir = workspace / "csv-files" / "output" / selected_method/"gsego"
         # 선택된 CSV가 있을 때만 st.session_state에 저장
         if csv_path:
             st.session_state["gsego_params"] = {
-                "file_path": csv_path,
+                "file_path":str(csv_path),
                 "out_dir": str(output_dir),
                 "orgdb": org_db,
                 "min_gs_size": min_gs_size,

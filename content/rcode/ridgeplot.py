@@ -18,10 +18,6 @@ FASTAPI_RIDGEPLOT = os.getenv("FASTAPI_RIDGEPLOT", "http://design-pathway-backen
 if "workspace" not in st.session_state:
     st.error("❌ Workspace not found. Please configure workspace before running Ridgeplot.")
     st.stop()
-
-workspace = Path(st.session_state.workspace)
-gseaplot_dir = Path(st.session_state.workspace, "GSEA_GO", "out")
-ridge_dir = Path(st.session_state.workspace, "GSEA_GO", "ridge")
 # ----------------- Main Tabs -----------------
 main_tabs = st.tabs(["📊 Ridgeplot (GSEA)"])
 ridge_tab = main_tabs[0]
@@ -32,7 +28,30 @@ with ridge_tab:
 
     # ----------------- CONFIGURE -----------------
     with configure_tab:
-        
+        analysis_info_path = Path(st.session_state.workspace) / "csv-files" / "output" / "analysis_info.csv"
+        method_options = []
+        selected_method = None
+
+        if analysis_info_path.exists():
+            try:
+                info_df = pd.read_csv(analysis_info_path)
+                # 'analysis_type' 컬럼에서 wald, LRT 추출
+                if "analysis_type" in info_df.columns:
+                    method_options = info_df["analysis_type"].dropna().unique().tolist()
+                else:
+                    st.warning("analysis_info.csv에 'analysis_type' 컬럼이 없습니다.")
+            except Exception as e:
+                st.warning(f"analysis_info.csv를 읽는 중 오류: {e}")
+        else:
+            st.warning("analysis_info.csv 파일이 존재하지 않습니다.")
+
+        if method_options:
+            selected_method = st.selectbox("분석 방법 선택", method_options)
+        else:
+            st.warning("분석 방법을 찾을 수 없습니다. DESeq2 분석을 먼저 실행해주세요.")    
+        workspace = Path(st.session_state.workspace)
+        gseaplot_dir = workspace / "csv-files" / "output" / selected_method/"gsego"
+        ridge_dir = gseaplot_dir/"ridgeplot"
 
         width = st.number_input("Plot width", value=10.0, step=0.5)
         height = st.number_input("Plot height", value=8.0, step=0.5)

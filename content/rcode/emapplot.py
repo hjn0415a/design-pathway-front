@@ -16,20 +16,6 @@ FASTAPI_EMAP = os.getenv(
     "FASTAPI_EMAP", "http://design-pathway-backend:8000/api/emapplot"
 )
 
-# ----------------- 업로드된 DEG 결과 확인 -----------------
-if "workspace" not in st.session_state:
-    st.warning("⚠️ Workspace not initialized. Please go to Upload or DEG tab first.")
-    csv_files = []
-else:
-    deg_dir = Path(st.session_state.workspace, "deg")
-    deg_dir.mkdir(parents=True, exist_ok=True)
-
-    combo_csv = deg_dir / "combo_names.csv"
-    if not combo_csv.exists():
-        st.warning("⚠️ No DEG results found. Please run DEG filtering first.")
-        csv_files = []
-    else:
-        combos = pd.read_csv(combo_csv)["combo"].tolist()
 
 # ----------------- 메인 탭 -----------------
 main_tabs = st.tabs(["🧬 GO Emap Plot"])
@@ -41,7 +27,7 @@ with emap_tab:
 
     # ----------------- Configure -----------------
     with configure_tab:
-              # analysis_info.csv 경로
+        workspace = Path(st.session_state.workspace)
         analysis_info_path = Path(st.session_state.workspace) / "csv-files" / "output" / "analysis_info.csv"
         method_options = []
         selected_method = None
@@ -61,32 +47,36 @@ with emap_tab:
 
         if method_options:
             selected_method = st.selectbox("분석 방법 선택", method_options)
-            st.session_state.selected_method_pca = selected_method
+
         else:
             st.warning("분석 방법을 찾을 수 없습니다. DESeq2 분석을 먼저 실행해주세요.")
-        output_dir = Path(st.session_state.workspace, "EmapPlot", "out")
-        output_dir.mkdir(parents=True, exist_ok=True)
+        if selected_method:
+               
+            deg_dir = workspace / "csv-files" / "output" / selected_method/ "deg"
+            combo_csv = deg_dir / "combo_names.csv"
+            
+            if os.path.exists(str(combo_csv)):
+                combo_df = pd.read_csv(combo_csv)
+                fc_values = sorted(list({float(c.split("_")[0][2:]) for c in combo_df["combo"]}))
+                pval_values = sorted(list({float(c.split("_")[1][1:]) for c in combo_df["combo"]}))
+
+                fc_threshold = st.selectbox("Select FC threshold", options=fc_values, index=0)
+                pval_threshold = st.selectbox("Select P-value threshold", options=pval_values, index=0)
+            else:
+                fc_threshold = None
+                pval_threshold = None
+            # ✅ 누락된 필드 추가
+
+            combo_root = deg_dir  # combo_names.csv가 있는 
+            enrich_dir = workspace / "csv-files" / "output" / selected_method/ "deg"/"enrich"
+            output_dir = enrich_dir / f"FC{fc_threshold}_p{pval_threshold}"/"emapplot"
+            
 
         # ✅ 기존 파라미터 + 누락된 임계값 설정 추가
         showCategory = st.number_input("Number of categories to show", value=5, step=1)
         org_db = st.selectbox("OrgDb", ["org.Hs.eg.db", "org.Mm.eg.db"], index=0)
         plot_width = st.number_input("Plot width", value=8.0, step=0.5)
         plot_height = st.number_input("Plot height", value=6.0, step=0.5)
-
-        # ✅ 추가된 필드
-        if os.path.exists(str(combo_csv)):
-            combo_df = pd.read_csv(combo_csv)
-            fc_values = sorted(list({float(c.split("_")[0][2:]) for c in combo_df["combo"]}))
-            pval_values = sorted(list({float(c.split("_")[1][1:]) for c in combo_df["combo"]}))
-
-            fc_threshold = st.selectbox("Select FC threshold", options=fc_values, index=0)
-            pval_threshold = st.selectbox("Select P-value threshold", options=pval_values, index=0)
-        else:
-            fc_threshold = None
-            pval_threshold = None
-        # ✅ 누락된 필드 추가
-        combo_root = deg_dir
-        enrich_dir = Path(st.session_state.workspace, "Enrichment", "out")  # ✅ 여기로 변경
 
 
         st.session_state["emap_params"] = {
@@ -145,7 +135,7 @@ with emap_tab:
         combo_name = f"FC{int(fc_threshold)}_p{pval_threshold}"
         for ont in ["BP", "CC", "MF"]:
             st.markdown(f"### {combo_name} - {ont}")
-            plot_file = output_dir / combo_name / f"emap_{ont}.svg"  # plot 파일명도 e.g., emap_BP.svg
+            plot_file = output_dir / f"emap_{ont}.svg"  # plot 파일명도 e.g., emap_BP.svg
             if plot_file.exists():
                 st.image(str(plot_file), width=750)
             else:
