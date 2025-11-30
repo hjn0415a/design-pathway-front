@@ -1,38 +1,118 @@
-from pathlib import Path
 import streamlit as st
 
-from src.common.common import page_setup
-
-page_setup(page="main")
-
-st.markdown(
-        """
-        # User Guide
-        ### QuantMS: A bioinformatics best-practice analysis pipeline for Quantitative Mass Spectrometry
-        Welcome to the OpenMS QuantMS App, a web application for the QuantMS quantitative proteomics analysis pipeline built using [OpenMS](https://openms.de/) and Nextflow.
-        """
-    )
-
 st.markdown("""
-      ## Quickstart 
+# DesignPathway 사용 가이드
 
-      You can start right away analyzing your data by following the steps below:
+이 앱은 유전자 발현 데이터(주로 RNA-seq 등)를 다양한 통계적/생물정보학적 방법으로 분석할 수 있는 통합 플랫폼입니다.  
+아래는 각 탭별 분석의 의미, 주요 설정(Configure), 그리고 DESeq2(wald/LRT) 분석 방식에 대한 상세 설명입니다.
 
-      ### 1. Create a workspace
-      On the left side of this page a workspace  defined where all your data including uploaded files will be stored. In the web app, you can share your results via the unique workspace ID. Be careful with sensitive data, anyone with access to this ID can view your data.
+---
 
-      ⚠️ Note: In the web app, all users with a unique workspace ID have the same rights.
-            
-      ### 2. 📁 Upload your files
-      Upload `sdrf` and `fasta` files via the **File Upload** tab. The data will be stored in your workspace. With the web app you can upload only one file at a time.
-      Locally there is no limit in files. However, it is recommended to upload large number of files by specifying the path to a directory containing the files.
+## 📁 File Upload (DESeq2 분석)
 
-      Your uploaded files will be shown on the same **File Upload** page in  **sdrf files** and **Fasta files** tabs. Also you can remove the files from workspace.
+- **분석 목적**: 실험군/대조군 등 여러 그룹의 유전자 발현 데이터를 업로드하고, 차등 발현 유전자(DEG)를 찾기 위한 DESeq2 분석을 수행합니다.
+- **주요 설정 및 절차**
+    1. **CSV 파일 업로드**: 분석에 사용할 원본 데이터를 업로드합니다.
+    2. **DESeq2 분석 실행**: 'Start DESeq2 Analysis' 버튼을 누르면 분석이 시작됩니다.
+        - **wald**: 2그룹(예: 대조군 vs 실험군) 간 차이 분석에 적합합니다.
+        - **LRT**: 3개 이상의 다중 그룹 비교 분석에 적합합니다.
+    3. 분석이 끝나면 결과가 자동 저장되며, 이후 모든 분석 탭에서 활용됩니다.
+- **Tip**: 분석 목적에 따라 wald(2그룹), LRT(다중그룹) 중 적합한 방법을 선택하세요.
 
-      ### 3. ⚙️ Analyze your uploaded data
+---
 
-      Select the `sdrf` and `fasta` files for analysis, configure user settings, and start the analysis using the **Run-analysis** button.
-      You can terminate the analysis immediately using the **Terminate/Clear** button and you can review the search engine log on the page.
-      Once the analysis completed successfully, the output table will be displayed on the page, along with downloadable links for crosslink identification files.
-            
+## 🌡️ Heatmap
+
+- **분석 목적**: 상위 발현 변화 유전자들의 발현 패턴을 시각적으로 한눈에 확인할 수 있습니다.
+- **주요 설정**
+    - **분석 방법 선택**: DESeq2 결과에서 wald/LRT 중 하나를 선택합니다.
+    - **Plot Width/Height**: 히트맵의 가로, 세로 크기를 지정합니다.
+    - **Top N genes**: padj(조정 p-value) 기준 상위 N개의 유전자를 시각화합니다.
+- **활용 예시**: 실험군/대조군 간 발현 패턴이 어떻게 달라지는지, 특정 유전자군이 그룹별로 어떻게 클러스터링되는지 확인할 수 있습니다.
+
+---
+
+## 🌋 Volcano, Enhanced
+
+- **분석 목적**: 유의미한 차등 발현 유전자(DEG)를 직관적으로 선별할 수 있는 산포도(Volcano plot)를 그립니다.
+- **주요 설정**
+    - **분석 방법 선택**: wald/LRT 중 선택
+    - **Fold Change Cutoff**: 유의미한 발현 변화의 기준값(예: 2배 이상)을 설정합니다.
+    - **P-value Cutoff**: 유의미한 유전자 선별을 위한 p-value 기준을 설정합니다.
+- **활용 예시**: 가장 크게 변화한 유전자, 통계적으로 의미 있는 DEG를 빠르게 파악할 수 있습니다.
+
+---
+
+## 📉 PCA (주성분 분석)
+
+- **분석 목적**: 전체 샘플의 유사성/차이를 저차원 공간에 시각화하여, 군집 구조나 이상치(outlier) 샘플을 탐색합니다.
+- **주요 설정**
+    - **분석 방법 선택**: wald/LRT 중 선택
+    - **Top N genes**:  N개의 유전자를 선택하여 PCA에 반영할 수 있습니다.
+    - **PCA Plot 옵션**: 그룹별 색상, 주성분(PC1/PC2 등) 선택 등
+- **활용 예시**: 실험군/대조군이 명확히 분리되는지, 데이터 품질에 문제가 없는지 확인할 수 있습니다.
+
+---
+
+## DEG
+
+- **분석 목적**: DESeq2 결과에서 차등 발현 유전자(DEG) 목록을 필터링/정리합니다.
+- **주요 설정**
+    - **분석 방법 선택**: wald/LRT 중 선택
+    - **DEG 필터링 옵션**: Fold Change, p-value 등 기준값 설정
+- **활용 예시**: 논문/보고서에 사용할 DEG 테이블을 손쉽게 추출할 수 있습니다.
+
+---
+
+## 📈 Enrichplot (기능/경로 풍부도 분석)
+
+- **분석 목적**: DEG가 특정 생물학적 경로/기능에 얼마나 많이 포함되는지(풍부도)를 분석합니다.
+- **주요 설정**
+    - **분석 방법 선택**: wald/LRT 중 선택
+    - **Enrichment 분석 옵션**: 분석할 gene set, p-value cutoff 등
+- **활용 예시**: DEG가 특정 신호전달경로, 대사경로 등에 집중되어 있는지 확인할 수 있습니다.
+
+---
+
+## 🕸️ Cnetplot (네트워크 시각화)
+
+- **분석 목적**: DEG와 기능/경로 간의 네트워크 관계를 시각화합니다.
+- **주요 설정**
+    - **분석 방법 선택**: wald/LRT 중 선택, DEG 기준값 설정
+    - **FC/P-value threshold**: DEG 기준값 선택
+    - **Number of categories to show**: 시각화할 카테고리 개수
+    - **OrgDb**: 분석 종(인간/마우스 등) 선택
+    - **Plot width/height**: 그래프 크기 지정
+- **활용 예시**: 특정 유전자가 여러 경로에 동시에 관여하는지, 경로 간 상호작용 구조를 파악할 수 있습니다.
+
+---
+
+## 📊 Emapplot (경로 간 유사성 시각화)
+
+- **분석 목적**: 풍부도 분석 결과에서 경로 간 유사성을 네트워크 형태로 시각화합니다.
+- **주요 설정**
+    - **분석 방법 선택**: wald/LRT 중 선택, DEG 기준값 설정
+    - **FC/P-value threshold**: DEG 기준값 선택
+    - **Emapplot 옵션**: 시각화 파라미터(카테고리, plot 크기 등)
+- **활용 예시**: 유사한 기능/경로들이 어떻게 연결되는지 한눈에 볼 수 있습니다.
+
+---
+
+## 📊 GseGO / 📈 Gseaplot / 🕸️ Ridgeplot 
+
+- **분석 목적**: GSEA(Gene Set Enrichment Analysis) 기반의 다양한 기능/경로 분석 및 시각화
+- **주요 설정**
+    - **분석 방법 선택**: wald/LRT 중 선택
+    - **OrgDb**: 분석 종 선택
+    - **Gene set size, p-value cutoff, plot 크기 등**: 각 분석별 주요 파라미터를 설정
+- **활용 예시**: 전체 유전자 발현 패턴에서 특정 경로/기능이 얼마나 활성화되어 있는지, 다양한 방식으로 시각화할 수 있습니다.
+
+---
+
+### 참고
+- **DESeq2 분석(wald/LRT)**은 반드시 파일 업로드 후 실행해야 하며, 이후 모든 분석 탭에서 해당 결과를 기반으로 추가 분석이 가능합니다.
+- 각 Configure 탭에서 설정한 값들은 분석 실행 시 자동 반영됩니다.
+- 분석 결과는 Result/Download 탭에서 확인 및 다운로드할 수 있습니다.
+- 각 분석의 목적과 해석법은 생물학적 질문에 따라 달라질 수 있으니, 실험 설계와 해석에 주의하세요. (분석 사항에 대해 궁금한 점은 연락을 해주시길 바랍니다.)
+
 """)
