@@ -4,6 +4,9 @@ import requests
 import pandas as pd
 import shutil
 from src.common.upload import csv_upload
+from src.common.common import page_setup
+
+params = page_setup()
 
 st.markdown("## Upload CSV Files, DEseq2")
 

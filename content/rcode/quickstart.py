@@ -1,5 +1,9 @@
 import streamlit as st
 
+from src.common.common import page_setup
+
+params = page_setup()
+
 st.markdown("""
 # DesignPathway 사용 가이드
 
