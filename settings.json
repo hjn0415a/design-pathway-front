@@ -1,7 +1,7 @@
 {
-    "app-name": "OpenMS WebApp Template",
+    "app-name": "DesignPathway Template",
     "github-user": "OpenMS",
-    "version": "1.0.2",
+    "version": "1.0.0",
     "repository-name": "streamlit-template",
     "analytics": {
         "google-analytics": {
